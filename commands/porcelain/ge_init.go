@@ -11,16 +11,16 @@ const (
 	DefaultDirPerm  = 0o755
 )
 
-// Invoked from main.go. InitRepo handles the 'ge init' command to initialize a new GitEngine repository.
+// Invoked from main.go. InitRepo handles the 'gegit init' command to initialize a new GitEngine repository. It only calls this function if first argument is init.
 func InitRepo(args []string) {
 	var repoPath string
 
 	// Determine repository path
 	switch len(args) {
-	case 0:
-		repoPath = "."
 	case 1:
-		repoPath = args[0]
+		repoPath = "."
+	case 2:
+		repoPath = args[1]
 
 		if err := os.MkdirAll(repoPath, DefaultDirPerm); err != nil {
 			if !os.IsExist(err) {
@@ -31,7 +31,7 @@ func InitRepo(args []string) {
 
 	default:
 		// Invalid usage
-		fmt.Println("Usage: gegit init [repository-path]")
+		fmt.Println("usage: gegit init [<directory>]")
 		os.Exit(1)
 	}
 
