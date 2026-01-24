@@ -8,8 +8,10 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"syscall"
 )
@@ -37,43 +39,128 @@ type IndexEntry struct {
 	Filename string   // file name
 }
 
-// upsertIndexEntry updates an existing entry or adds a new one.
-func upsertIndexEntry(entries []IndexEntry, newEntry IndexEntry) []IndexEntry {
-	for i, e := range entries {
-		if e.Filename == newEntry.Filename {
-			entries[i] = newEntry
-			return entries
+// addOrUpdatePath adds or updates the index entry for the given path.
+func addOrUpdatePath(path string, indexMap map[string]IndexEntry, workingSet map[string]bool, trackWorkingSet bool) {
+
+	// Clean and normalize the path
+	cleanPath := filepath.ToSlash(filepath.Clean(path))
+	if trackWorkingSet {
+		workingSet[cleanPath] = true
+	}
+	// Get file info
+	info, err := os.Stat(cleanPath)
+	if err != nil {
+		return
+	}
+	stat := info.Sys().(*syscall.Stat_t)
+
+	// Check if already tracked
+	existing, tracked := indexMap[cleanPath]
+
+	if tracked {
+		unchanged :=
+			existing.Dev == uint32(stat.Dev) &&
+				existing.Ino == uint32(stat.Ino) &&
+				existing.FileSize == uint32(info.Size()) &&
+				existing.Mtime == uint32(stat.Mtimespec.Sec) &&
+				existing.MtimeNs == uint32(stat.Mtimespec.Nsec) &&
+				existing.Ctime == uint32(stat.Ctimespec.Sec) &&
+				existing.CtimeNs == uint32(stat.Ctimespec.Nsec)
+
+		if unchanged {
+			return
 		}
 	}
-	return append(entries, newEntry)
+
+	// Compute new hash and create new index entry
+	hash, err := hashFileObject(cleanPath)
+	if err != nil {
+		return
+	}
+
+	// Create new index entry
+	entry, err := newIndexEntry(cleanPath, hash)
+	if err != nil {
+		return
+	}
+
+	// Update the index map
+	indexMap[cleanPath] = entry
 }
 
 // Invoked from main.go. AddFiles handles the 'gegit add' command to add files to the staging area. It only calls this function if first argument is add.
 func AddFiles(args []string) {
 
-	indexPath := filepath.Join(".gegit", "index")
+	if len(args) < 2 {
+		// No files specified
+		fmt.Println("usage: gegit add . | <file> [<file> ...]")
+		os.Exit(1)
+	}
+
+	indexPath := filepath.Join(".git", "index")
 	entries, err := loadIndex(indexPath)
 	if err != nil {
 		fmt.Println("Error loading index:", err)
 		return
 	}
 
-	// Process each file argument
-	for _, path := range args {
-		hash, err := hashFileObject(path)
-		if err != nil {
-			fmt.Println("Error hashing file:", err)
-			continue
-		}
-		entry, err := newIndexEntry(path, hash)
-		if err != nil {
-			fmt.Println("Error creating index entry:", err)
-			continue
-		}
-		entries = upsertIndexEntry(entries, entry)
+	// Create a map for quick lookup of existing entries
+	indexMap := map[string]IndexEntry{}
+	for _, e := range entries {
+		indexMap[e.Filename] = e
 	}
 
-	// Sort entries by filename
+	// Keep track of files in the working directory if '.' is specified
+	workingSet := map[string]bool{}
+	isAddAll := slices.Contains(args[1:], ".")
+
+	// Handle the case where '.' is provided as an argument
+	if isAddAll {
+		filepath.WalkDir(".", func(path string, d fs.DirEntry, err error) error {
+			if err != nil {
+				fmt.Println("Error accessing path:", err)
+				return nil
+			}
+			// Skip the root directory itself
+			if path == "." {
+				return nil
+			}
+
+			// Skip the .gegit directory
+			if d.IsDir() && d.Name() == ".git" {
+				return filepath.SkipDir
+			}
+
+			// Skip directories, only add files
+			if d.IsDir() {
+				return nil
+			}
+
+			// Add or update the file in the index
+			addOrUpdatePath(path, indexMap, workingSet, true)
+			return nil
+		})
+	} else {
+		// Handle specific files
+		for _, path := range args[1:] {
+			addOrUpdatePath(path, indexMap, workingSet, false)
+		}
+	}
+
+	if isAddAll {
+		// Handle deletions: remove entries not in working set, only use in add .
+		for path := range indexMap {
+			if !workingSet[path] {
+				delete(indexMap, path)
+			}
+		}
+	}
+
+	// Rebuild sorted index entries by filename
+	entries = entries[:0]
+	for _, entry := range indexMap {
+		entries = append(entries, entry)
+	}
 	sort.Slice(entries, func(i, j int) bool {
 		return entries[i].Filename < entries[j].Filename
 	})
@@ -110,7 +197,7 @@ func hashFileObject(path string) ([20]byte, error) {
 	hash := hex.EncodeToString(sum[:])
 
 	// Prepare the object file path
-	dir := filepath.Join(".gegit", "objects", hash[:2])
+	dir := filepath.Join(".git", "objects", hash[:2])
 	file := filepath.Join(dir, hash[2:])
 
 	// Create directory if it doesn't exist
@@ -179,8 +266,10 @@ func buildIndexBuffer(entries []IndexEntry) ([]byte, error) {
 		// Write the FULL filename (not truncated!)
 		buffer = append(buffer, []byte(entry.Filename)...)
 
-		// Padding: entries must be padded to multiple of 8 bytes
-		// Minimum 1 null byte, upto 8 null bytes
+		// Add null terminator
+		buffer = append(buffer, 0x00)
+
+		// Padding: entries must be padded to multiple of 8 bytes from entryStart
 		entryLen := len(buffer) - entryStart
 		padLen := (8 - (entryLen % 8)) % 8
 		buffer = append(buffer, make([]byte, padLen)...)
@@ -230,52 +319,57 @@ func loadIndex(indexPath string) ([]IndexEntry, error) {
 
 	// Loop through entries
 	for i := uint32(0); i < entryCount; i++ {
+		entryStart := offset // Track where this entry starts
 		if offset+62 > len(content) {
 			return nil, fmt.Errorf("corrupt index entry")
 		}
 
 		// Read fixed-size fields
 		var ie IndexEntry
-		ie.Ctime = binary.BigEndian.Uint32(data[offset:])
+		ie.Ctime = binary.BigEndian.Uint32(content[offset:])
 		offset += 4
-		ie.CtimeNs = binary.BigEndian.Uint32(data[offset:])
+		ie.CtimeNs = binary.BigEndian.Uint32(content[offset:])
 		offset += 4
-		ie.Mtime = binary.BigEndian.Uint32(data[offset:])
+		ie.Mtime = binary.BigEndian.Uint32(content[offset:])
 		offset += 4
-		ie.MtimeNs = binary.BigEndian.Uint32(data[offset:])
+		ie.MtimeNs = binary.BigEndian.Uint32(content[offset:])
 		offset += 4
-		ie.Dev = binary.BigEndian.Uint32(data[offset:])
+		ie.Dev = binary.BigEndian.Uint32(content[offset:])
 		offset += 4
-		ie.Ino = binary.BigEndian.Uint32(data[offset:])
+		ie.Ino = binary.BigEndian.Uint32(content[offset:])
 		offset += 4
-		ie.Mode = binary.BigEndian.Uint32(data[offset:])
+		ie.Mode = binary.BigEndian.Uint32(content[offset:])
 		offset += 4
-		ie.Uid = binary.BigEndian.Uint32(data[offset:])
+		ie.Uid = binary.BigEndian.Uint32(content[offset:])
 		offset += 4
-		ie.Gid = binary.BigEndian.Uint32(data[offset:])
+		ie.Gid = binary.BigEndian.Uint32(content[offset:])
 		offset += 4
-		ie.FileSize = binary.BigEndian.Uint32(data[offset:])
+		ie.FileSize = binary.BigEndian.Uint32(content[offset:])
 		offset += 4
 
-		copy(ie.SHA1[:], data[offset:offset+20])
+		copy(ie.SHA1[:], content[offset:offset+20])
 		offset += 20
 
 		// Read flags, including filename length
-		flags := binary.BigEndian.Uint16(data[offset:])
+		ie.Flags = binary.BigEndian.Uint16(content[offset:])
 		offset += 2
 
-		nameLen := int(flags & 0x0FFF) // lower 12 bits
-
-		// Read filename
-		if offset+nameLen > len(content) {
-			return nil, fmt.Errorf("corrupt index entry filename")
+		start := offset
+		for offset < len(content) && content[offset] != 0 {
+			offset++
+		}
+		if offset >= len(content) {
+			return nil, fmt.Errorf("unterminated filename in index")
 		}
 
-		ie.Filename = string(data[offset : offset+nameLen])
-		offset += nameLen
+		ie.Filename = string(content[start:offset])
+		offset++ // Skip null terminator
 
-		for offset%8 != 0 {
+		// Align to next multiple of 8 bytes FROM THE ENTRY START
+		entryLen := offset - entryStart
+		for (entryLen % 8) != 0 {
 			offset++
+			entryLen++
 		}
 
 		// Append entry to list

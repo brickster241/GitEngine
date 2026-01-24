@@ -53,7 +53,7 @@ func InitRepo(args []string) {
 
 	// Check whether .gegit already exists
 	reinitialize := false
-	if _, err := os.Stat(".gegit"); err == nil {
+	if _, err := os.Stat(".git"); err == nil {
 		reinitialize = true
 	}
 
@@ -64,7 +64,7 @@ func InitRepo(args []string) {
 	}
 
 	// Success message
-	gitDirPath := filepath.Join(absRepopath, ".gegit")
+	gitDirPath := filepath.Join(absRepopath, ".git")
 	if reinitialize {
 		fmt.Printf("Reinitialized existing Git repository in %s\n", gitDirPath)
 	} else {
@@ -77,13 +77,13 @@ func createGitDirs() error {
 
 	// Define the necessary directory structure
 	dir_paths := []string{
-		".gegit",
-		".gegit/objects",
-		".gegit/refs",
-		".gegit/refs/heads",
-		".gegit/refs/tags",
-		// ".gegit/hooks",
-		// ".gegit/info",
+		".git",
+		".git/objects",
+		".git/refs",
+		".git/refs/heads",
+		".git/refs/tags",
+		// ".git/hooks",
+		// ".git/info",
 	}
 
 	// Create the necessary directories
@@ -96,7 +96,7 @@ func createGitDirs() error {
 
 	// Create HEAD file which will point to master branch
 	head := "ref: refs/heads/master\n"
-	if err := os.WriteFile(".gegit/HEAD", []byte(head), DefaultFilePerm); err != nil {
+	if err := os.WriteFile(".git/HEAD", []byte(head), DefaultFilePerm); err != nil {
 		return err
 	}
 
@@ -111,7 +111,7 @@ func createGitDirs() error {
 	`
 
 	// Write config file
-	if err := os.WriteFile(".gegit/config", []byte(config), DefaultFilePerm); err != nil {
+	if err := os.WriteFile(".git/config", []byte(config), DefaultFilePerm); err != nil {
 		return err
 	}
 	return nil
