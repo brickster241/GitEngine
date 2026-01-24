@@ -76,7 +76,7 @@ func InitRepo(args []string) {
 func createGitDirs() error {
 
 	// Define the necessary directory structure
-	paths := []string{
+	dir_paths := []string{
 		".gegit",
 		".gegit/objects",
 		".gegit/refs",
@@ -87,14 +87,14 @@ func createGitDirs() error {
 	}
 
 	// Create the necessary directories
-	for _, path := range paths {
+	for _, path := range dir_paths {
 		// Create directory if it doesn't exist
 		if err := os.MkdirAll(path, DefaultDirPerm); err != nil {
 			return err
 		}
 	}
 
-	// HEAD file (unborn branch)
+	// Create HEAD file which will point to master branch
 	head := "ref: refs/heads/master\n"
 	if err := os.WriteFile(".gegit/HEAD", []byte(head), DefaultFilePerm); err != nil {
 		return err

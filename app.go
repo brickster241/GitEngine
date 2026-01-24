@@ -14,7 +14,7 @@ func main() {
 	if len(os.Args) == 1 {
 
 		// No arguments provided
-		fmt.Printf("gegit: command cannot be empty. See 'gegit help' for available commands.\n", os.Args[1])
+		fmt.Printf("gegit: command cannot be empty. See 'gegit help' for available commands.\n")
 		fmt.Println("usage: gegit <command> [<args>]")
 		os.Exit(0)
 	}
@@ -23,6 +23,9 @@ func main() {
 	case "init":
 		// Initialize a new repository
 		porcelain.InitRepo(os.Args[1:])
+	case "add":
+		// Add files to the staging area / index
+		porcelain.AddFiles(os.Args[1:])
 	default:
 		// Command not found
 		fmt.Printf("gegit: '%s' is not a git command. See 'gegit help' for available commands.\n", os.Args[1])
