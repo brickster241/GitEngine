@@ -26,6 +26,9 @@ func main() {
 	case "add":
 		// Add files to the staging area / index
 		porcelain.AddFiles(os.Args[1:])
+	case "status":
+		// Show the working tree status
+		porcelain.ShowStatus(os.Args[1:])
 	default:
 		// Command not found
 		fmt.Printf("gegit: '%s' is not a git command. See 'gegit help' for available commands.\n", os.Args[1])

@@ -75,12 +75,14 @@ func addOrUpdatePath(path string, indexMap map[string]IndexEntry, workingSet map
 	// Compute new hash and create new index entry
 	hash, err := hashFileObject(cleanPath)
 	if err != nil {
+		fmt.Println("Error hashing file object:", err)
 		return
 	}
 
 	// Create new index entry
 	entry, err := newIndexEntry(cleanPath, hash)
 	if err != nil {
+		fmt.Println("Error creating index entry:", err)
 		return
 	}
 
@@ -116,7 +118,7 @@ func AddFiles(args []string) {
 
 	// Handle the case where '.' is provided as an argument
 	if isAddAll {
-		filepath.WalkDir(".", func(path string, d fs.DirEntry, err error) error {
+		_ = filepath.WalkDir(".", func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
 				fmt.Println("Error accessing path:", err)
 				return nil
