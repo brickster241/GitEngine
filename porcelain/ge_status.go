@@ -8,7 +8,7 @@ import (
 	"sort"
 	"syscall"
 
-	"github.com/brickster241/GitEngine/types"
+	"github.com/brickster241/GitEngine/utils/types"
 )
 
 // Invoked from main.go. ShowStatus handles the 'gegit status' command to show the working tree status.

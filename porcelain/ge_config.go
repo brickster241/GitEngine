@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/brickster241/GitEngine/types"
+	"github.com/brickster241/GitEngine/utils/types"
 	"gopkg.in/ini.v1"
 )
 

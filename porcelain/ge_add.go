@@ -15,8 +15,8 @@ import (
 	"sort"
 	"syscall"
 
-	"github.com/brickster241/GitEngine/constants"
-	"github.com/brickster241/GitEngine/types"
+	"github.com/brickster241/GitEngine/utils/constants"
+	"github.com/brickster241/GitEngine/utils/types"
 )
 
 // addOrUpdatePath adds or updates the index entry for the given path.

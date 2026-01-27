@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/brickster241/GitEngine/constants"
-	"github.com/brickster241/GitEngine/types"
+	"github.com/brickster241/GitEngine/utils/constants"
+	"github.com/brickster241/GitEngine/utils/types"
 )
 
 // Invoked from main.go. CommitChanges handles the 'gegit commit' command to commit changes to the repository. It creates a new commit from the current index and advances the current branch to point to it.

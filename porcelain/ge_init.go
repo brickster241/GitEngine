@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/brickster241/GitEngine/constants"
+	"github.com/brickster241/GitEngine/utils/constants"
 )
 
 // Invoked from main.go. InitRepo handles the 'gegit init' command to initialize a new GitEngine repository. It only calls this function if first argument is init.
