@@ -12,10 +12,15 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/brickster241/GitEngine/constants"
+	"github.com/brickster241/GitEngine/types"
 )
 
 // Invoked from main.go. CommitChanges handles the 'gegit commit' command to commit changes to the repository. It creates a new commit from the current index and advances the current branch to point to it.
 func CommitChanges(args []string) {
+
+	// Check args length and if correct flag is present.
 	if len(args) != 3 || args[1] != "-m" {
 		fmt.Println("usage: gegit commit -m <message>")
 		os.Exit(1)
@@ -88,12 +93,12 @@ func CommitChanges(args []string) {
 }
 
 // buildTreeFromIndex builds an in-memory tree structure from the given index entries.
-func buildTreeFromIndex(entries []IndexEntry) *TreeNode {
+func buildTreeFromIndex(entries []types.IndexEntry) *types.TreeNode {
 
 	// Build the tree structure
-	root := &TreeNode{
-		Files: make(map[string]IndexEntry),
-		Dirs:  make(map[string]*TreeNode),
+	root := &types.TreeNode{
+		Files: make(map[string]types.IndexEntry),
+		Dirs:  make(map[string]*types.TreeNode),
 	}
 
 	// Populate the tree structure
@@ -105,9 +110,9 @@ func buildTreeFromIndex(entries []IndexEntry) *TreeNode {
 		for i := 0; i < len(parts)-1; i++ {
 			dir := parts[i]
 			if currNode.Dirs[dir] == nil {
-				currNode.Dirs[dir] = &TreeNode{
-					Files: make(map[string]IndexEntry),
-					Dirs:  make(map[string]*TreeNode),
+				currNode.Dirs[dir] = &types.TreeNode{
+					Files: make(map[string]types.IndexEntry),
+					Dirs:  make(map[string]*types.TreeNode),
 				}
 			}
 			currNode = currNode.Dirs[dir]
@@ -121,8 +126,8 @@ func buildTreeFromIndex(entries []IndexEntry) *TreeNode {
 }
 
 // writeTree recursively writes tree objects to the object database and returns the SHA of the root tree.
-func writeTree(node *TreeNode) ([20]byte, error) {
-	var entries []TreeEntry
+func writeTree(node *types.TreeNode) ([20]byte, error) {
+	var entries []types.TreeEntry
 
 	// recursion first (dirs)
 	for name, child := range node.Dirs {
@@ -132,8 +137,8 @@ func writeTree(node *TreeNode) ([20]byte, error) {
 		}
 
 		// Add TreeEntry to the list of entries
-		entries = append(entries, TreeEntry{
-			Mode: DirModeStr,
+		entries = append(entries, types.TreeEntry{
+			Mode: constants.DirModeStr,
 			Name: name,
 			SHA:  sha,
 		})
@@ -141,8 +146,8 @@ func writeTree(node *TreeNode) ([20]byte, error) {
 
 	// Files
 	for name, ie := range node.Files {
-		entries = append(entries, TreeEntry{
-			Mode: FileModeStr,
+		entries = append(entries, types.TreeEntry{
+			Mode: constants.FileModeStr,
 			Name: name,
 			SHA:  ie.SHA1,
 		})
@@ -156,7 +161,7 @@ func writeTree(node *TreeNode) ([20]byte, error) {
 }
 
 // writeTreeObject serializes a list of sorted TreeEntry values into a Git tree object.
-func hashTreeObject(entries []TreeEntry) ([20]byte, error) {
+func hashTreeObject(entries []types.TreeEntry) ([20]byte, error) {
 	var content bytes.Buffer
 
 	// Build Tree content (no header yet)
@@ -184,7 +189,7 @@ func hashTreeObject(entries []TreeEntry) ([20]byte, error) {
 	file := filepath.Join(dir, hash[2:])
 
 	// Create directory if it doesn't exist
-	if err := os.MkdirAll(dir, DefaultDirPerm); err != nil {
+	if err := os.MkdirAll(dir, constants.DefaultDirPerm); err != nil {
 		return [20]byte{}, err
 	}
 
@@ -201,7 +206,7 @@ func hashTreeObject(entries []TreeEntry) ([20]byte, error) {
 	}
 
 	// Write to file
-	if err := os.WriteFile(file, buf.Bytes(), DefaultFilePerm); err != nil {
+	if err := os.WriteFile(file, buf.Bytes(), constants.DefaultFilePerm); err != nil {
 		return [20]byte{}, err
 	}
 
@@ -209,7 +214,7 @@ func hashTreeObject(entries []TreeEntry) ([20]byte, error) {
 }
 
 // writeCommitObject creates a Git commit object, writes it to the object database, and returns the commit SHA.
-func writeCommitObject(treeSHA [20]byte, parentsSHA [][20]byte, author Author, message string) ([20]byte, error) {
+func writeCommitObject(treeSHA [20]byte, parentsSHA [][20]byte, author types.Author, message string) ([20]byte, error) {
 	var content bytes.Buffer
 
 	// Tree Line : "tree <sha_hex>\n"
@@ -276,7 +281,7 @@ func writeCommitObject(treeSHA [20]byte, parentsSHA [][20]byte, author Author, m
 	file := filepath.Join(dir, hash[2:])
 
 	// Create directory if it doesn't exist
-	if err := os.MkdirAll(dir, DefaultDirPerm); err != nil {
+	if err := os.MkdirAll(dir, constants.DefaultDirPerm); err != nil {
 		return [20]byte{}, err
 	}
 
@@ -293,7 +298,7 @@ func writeCommitObject(treeSHA [20]byte, parentsSHA [][20]byte, author Author, m
 	}
 
 	// Write to file
-	if err := os.WriteFile(file, buf.Bytes(), DefaultFilePerm); err != nil {
+	if err := os.WriteFile(file, buf.Bytes(), constants.DefaultFilePerm); err != nil {
 		return [20]byte{}, err
 	}
 
@@ -367,7 +372,7 @@ func updateBranchRef(commitSHA [20]byte) error {
 
 	shaHex := hex.EncodeToString(commitSHA[:]) + "\n"
 	// Write shaHex to file
-	if err := os.WriteFile(refPath, []byte(shaHex), DefaultFilePerm); err != nil {
+	if err := os.WriteFile(refPath, []byte(shaHex), constants.DefaultFilePerm); err != nil {
 		return err
 	}
 

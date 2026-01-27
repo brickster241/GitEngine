@@ -14,33 +14,13 @@ import (
 	"slices"
 	"sort"
 	"syscall"
-)
 
-const (
-	RegularFileMode    = 0o100644
-	ExecutableFileMode = 0o100755
-	SymlinkFileMode    = 0o120000
+	"github.com/brickster241/GitEngine/constants"
+	"github.com/brickster241/GitEngine/types"
 )
-
-// IndexEntry represents a single entry in the Git index (staging area).
-type IndexEntry struct {
-	Ctime    uint32   // seconds since epoch
-	CtimeNs  uint32   // nanoseconds
-	Mtime    uint32   // seconds since epoch
-	MtimeNs  uint32   // nanoseconds
-	Dev      uint32   // device
-	Ino      uint32   // inode
-	Mode     uint32   // file mode - 0100644 for regular file
-	Uid      uint32   // user id
-	Gid      uint32   // group id
-	FileSize uint32   // size in bytes
-	SHA1     [20]byte // SHA-1 hash of the file content
-	Flags    uint16   // flags
-	Filename string   // file name
-}
 
 // addOrUpdatePath adds or updates the index entry for the given path.
-func addOrUpdatePath(path string, indexMap map[string]IndexEntry, workingSet map[string]bool, trackWorkingSet bool) {
+func addOrUpdatePath(path string, indexMap map[string]types.IndexEntry, workingSet map[string]bool, trackWorkingSet bool) {
 
 	// Clean and normalize the path
 	cleanPath := filepath.ToSlash(filepath.Clean(path))
@@ -107,7 +87,7 @@ func AddFiles(args []string) {
 	}
 
 	// Create a map for quick lookup of existing entries
-	indexMap := map[string]IndexEntry{}
+	indexMap := map[string]types.IndexEntry{}
 	for _, e := range entries {
 		indexMap[e.Filename] = e
 	}
@@ -175,7 +155,7 @@ func AddFiles(args []string) {
 	}
 
 	// Write updated index file
-	if err := os.WriteFile(indexPath, indexBuffer, DefaultFilePerm); err != nil {
+	if err := os.WriteFile(indexPath, indexBuffer, constants.DefaultFilePerm); err != nil {
 		fmt.Println("Error writing index file:", err)
 		return
 	}
@@ -203,7 +183,7 @@ func hashFileObject(path string) ([20]byte, error) {
 	file := filepath.Join(dir, hash[2:])
 
 	// Create directory if it doesn't exist
-	if err := os.MkdirAll(dir, DefaultDirPerm); err != nil {
+	if err := os.MkdirAll(dir, constants.DefaultDirPerm); err != nil {
 		return [20]byte{}, err
 	}
 
@@ -220,7 +200,7 @@ func hashFileObject(path string) ([20]byte, error) {
 	}
 
 	// Write to file
-	if err := os.WriteFile(file, buf.Bytes(), DefaultFilePerm); err != nil {
+	if err := os.WriteFile(file, buf.Bytes(), constants.DefaultFilePerm); err != nil {
 		return [20]byte{}, err
 	}
 
@@ -228,7 +208,7 @@ func hashFileObject(path string) ([20]byte, error) {
 }
 
 // buildIndexBuffer returns serialized index bytes.
-func buildIndexBuffer(entries []IndexEntry) ([]byte, error) {
+func buildIndexBuffer(entries []types.IndexEntry) ([]byte, error) {
 	var buffer []byte
 
 	// 12-byte header: "DIRC" + version(2) + entry count
@@ -288,10 +268,10 @@ func buildIndexBuffer(entries []IndexEntry) ([]byte, error) {
 }
 
 // loadIndex reads the index file and returns the list of IndexEntry.
-func loadIndex(indexPath string) ([]IndexEntry, error) {
+func loadIndex(indexPath string) ([]types.IndexEntry, error) {
 
 	if _, err := os.Stat(indexPath); errors.Is(err, os.ErrNotExist) {
-		return []IndexEntry{}, nil // No index file yet
+		return []types.IndexEntry{}, nil // No index file yet
 	}
 
 	// Read the entire index file
@@ -319,7 +299,7 @@ func loadIndex(indexPath string) ([]IndexEntry, error) {
 
 	// Parse entries
 	content := data[:len(data)-20]
-	entries := make([]IndexEntry, 0, entryCount)
+	entries := make([]types.IndexEntry, 0, entryCount)
 	offset := 12
 
 	// Loop through entries
@@ -330,7 +310,7 @@ func loadIndex(indexPath string) ([]IndexEntry, error) {
 		}
 
 		// Read fixed-size fields
-		var ie IndexEntry
+		var ie types.IndexEntry
 		ie.Ctime = binary.BigEndian.Uint32(content[offset:])
 		offset += 4
 		ie.CtimeNs = binary.BigEndian.Uint32(content[offset:])
@@ -385,31 +365,31 @@ func loadIndex(indexPath string) ([]IndexEntry, error) {
 }
 
 // newIndexEntry creates a new IndexEntry for the given file path and SHA-1 hash.
-func newIndexEntry(path string, sha1sum [20]byte) (IndexEntry, error) {
+func newIndexEntry(path string, sha1sum [20]byte) (types.IndexEntry, error) {
 
 	// Get file info
 	info, err := os.Stat(path)
 	if err != nil {
-		return IndexEntry{}, err
+		return types.IndexEntry{}, err
 	}
 
 	// clean the path to use as filename
 	cleanPath := filepath.Clean(path)
 	if filepath.IsAbs(cleanPath) {
-		return IndexEntry{}, fmt.Errorf("absolute paths are not supported in index entries")
+		return types.IndexEntry{}, fmt.Errorf("absolute paths are not supported in index entries")
 	}
 	cleanPath = filepath.ToSlash(cleanPath) // Use forward slashes
 
 	// Get system-specific file info
 	stat := info.Sys().(*syscall.Stat_t)
-	return IndexEntry{
+	return types.IndexEntry{
 		Ctime:    uint32(stat.Ctimespec.Sec),
 		CtimeNs:  uint32(stat.Ctimespec.Nsec),
 		Mtime:    uint32(stat.Mtimespec.Sec),
 		MtimeNs:  uint32(stat.Mtimespec.Nsec),
 		Dev:      uint32(stat.Dev),
 		Ino:      uint32(stat.Ino),
-		Mode:     RegularFileMode,
+		Mode:     constants.RegularFileMode,
 		Uid:      uint32(stat.Uid),
 		Gid:      uint32(stat.Gid),
 		FileSize: uint32(info.Size()),

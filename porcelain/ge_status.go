@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"sort"
 	"syscall"
+
+	"github.com/brickster241/GitEngine/types"
 )
 
 // Invoked from main.go. ShowStatus handles the 'gegit status' command to show the working tree status.
@@ -27,7 +29,7 @@ func ShowStatus(args []string) {
 	}
 
 	// Create a map for quick lookup of existing entries
-	indexMap := map[string]IndexEntry{}
+	indexMap := map[string]types.IndexEntry{}
 	for _, e := range entries {
 		indexMap[e.Filename] = e
 	}

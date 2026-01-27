@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/brickster241/GitEngine/types"
 	"gopkg.in/ini.v1"
 )
 
@@ -100,21 +101,21 @@ func setConfig(key, value string) error {
 }
 
 // getAuthorInfo fetches the Author information present in .git/config
-func getAuthorInfo() (Author, error) {
+func getAuthorInfo() (types.Author, error) {
 
 	// Get user.name
 	name, err := getConfig("user.name")
 	if err != nil {
-		return Author{}, err
+		return types.Author{}, err
 	}
 
 	// Get user.email
 	email, err := getConfig("user.email")
 	if err != nil {
-		return Author{}, err
+		return types.Author{}, err
 	}
 
-	return Author{
+	return types.Author{
 		Name:  name,
 		Email: email,
 	}, nil

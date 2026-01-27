@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/brickster241/GitEngine/constants"
 )
 
 // Invoked from main.go. InitRepo handles the 'gegit init' command to initialize a new GitEngine repository. It only calls this function if first argument is init.
@@ -17,7 +19,7 @@ func InitRepo(args []string) {
 	case 2:
 		repoPath = args[1]
 
-		if err := os.MkdirAll(repoPath, DefaultDirPerm); err != nil {
+		if err := os.MkdirAll(repoPath, constants.DefaultDirPerm); err != nil {
 			if !os.IsExist(err) {
 				fmt.Println("Error Creating directory:", err)
 				os.Exit(1)
@@ -71,20 +73,20 @@ func InitRepo(args []string) {
 func createGitDirs() error {
 
 	// Create the necessary directories
-	for _, path := range Dir_paths {
+	for _, path := range constants.Dir_paths {
 		// Create directory if it doesn't exist
-		if err := os.MkdirAll(path, DefaultDirPerm); err != nil {
+		if err := os.MkdirAll(path, constants.DefaultDirPerm); err != nil {
 			return err
 		}
 	}
 
 	// Create HEAD file which will point to master branch
-	if err := os.WriteFile(".git/HEAD", []byte(Head), DefaultFilePerm); err != nil {
+	if err := os.WriteFile(".git/HEAD", []byte(constants.Head), constants.DefaultFilePerm); err != nil {
 		return err
 	}
 
 	// Write config file
-	if err := os.WriteFile(".git/config", []byte(Config), DefaultFilePerm); err != nil {
+	if err := os.WriteFile(".git/config", []byte(constants.Config), constants.DefaultFilePerm); err != nil {
 		return err
 	}
 	return nil
