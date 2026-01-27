@@ -214,7 +214,10 @@ func hashFileObject(path string) ([20]byte, error) {
 		return [20]byte{}, err
 	}
 
-	w.Close()
+	// Close the writer
+	if err := w.Close(); err != nil {
+		return [20]byte{}, err
+	}
 
 	// Write to file
 	if err := os.WriteFile(file, buf.Bytes(), DefaultFilePerm); err != nil {

@@ -6,11 +6,6 @@ import (
 	"path/filepath"
 )
 
-const (
-	DefaultFilePerm = 0o644
-	DefaultDirPerm  = 0o755
-)
-
 // Invoked from main.go. InitRepo handles the 'gegit init' command to initialize a new GitEngine repository. It only calls this function if first argument is init.
 func InitRepo(args []string) {
 	var repoPath string
@@ -75,19 +70,8 @@ func InitRepo(args []string) {
 // Invoked from initRepo function. createGitDirs initializes a new .gegit directory structure. This assumes the main repository directory already exists and is the current working directory.
 func createGitDirs() error {
 
-	// Define the necessary directory structure
-	dir_paths := []string{
-		".git",
-		".git/objects",
-		".git/refs",
-		".git/refs/heads",
-		".git/refs/tags",
-		// ".git/hooks",
-		// ".git/info",
-	}
-
 	// Create the necessary directories
-	for _, path := range dir_paths {
+	for _, path := range Dir_paths {
 		// Create directory if it doesn't exist
 		if err := os.MkdirAll(path, DefaultDirPerm); err != nil {
 			return err
@@ -95,23 +79,12 @@ func createGitDirs() error {
 	}
 
 	// Create HEAD file which will point to master branch
-	head := "ref: refs/heads/master\n"
-	if err := os.WriteFile(".git/HEAD", []byte(head), DefaultFilePerm); err != nil {
+	if err := os.WriteFile(".git/HEAD", []byte(Head), DefaultFilePerm); err != nil {
 		return err
 	}
 
-	// Config file (default settings)
-	config := `[core]
-	repositoryformatversion = 0
-	filemode = true
-	bare = false
-	logallrefupdates = true
-	ignorecase = true
-	precomposeunicode = true
-	`
-
 	// Write config file
-	if err := os.WriteFile(".git/config", []byte(config), DefaultFilePerm); err != nil {
+	if err := os.WriteFile(".git/config", []byte(Config), DefaultFilePerm); err != nil {
 		return err
 	}
 	return nil
