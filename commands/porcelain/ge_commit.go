@@ -5,6 +5,7 @@ import (
 	"compress/zlib"
 	"crypto/sha1"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -13,24 +14,79 @@ import (
 	"time"
 )
 
-// Invoked from main.go. CommitChanges handles the 'gegit commit' command to commit changes to the repository.
+// Invoked from main.go. CommitChanges handles the 'gegit commit' command to commit changes to the repository. It creates a new commit from the current index and advances the current branch to point to it.
 func CommitChanges(args []string) {
 	if len(args) != 3 || args[1] != "-m" {
 		fmt.Println("usage: gegit commit -m <message>")
 		os.Exit(1)
 	}
-}
 
-// buildTreeFromIndex builds an in-memory tree structure from the given index entries.
-func buildTreeFromIndex() *TreeNode {
+	// Extract the message
+	message := args[2]
 
 	// Load the index
 	indexPath := filepath.Join(".git", "index")
 	entries, err := loadIndex(indexPath)
 	if err != nil {
 		fmt.Println("Error loading index:", err)
-		return nil
+		return
+	} else if len(entries) == 0 {
+		fmt.Println("Error: Nothing to commmit")
+		return
 	}
+
+	// Build in-memory tree structure
+	root := buildTreeFromIndex(entries)
+
+	// Write tree Objects (recursive)
+	treeSHA, err := writeTree(root)
+	if err != nil {
+		fmt.Println("Error writing tree object:", err)
+		return
+	}
+
+	// Read HEAD (parent commit, if any)
+	parentSHA, err := readHEADCommit()
+	if err != nil {
+		fmt.Println("Error reading .git/HEAD:", err)
+		return
+	}
+
+	parentsSHA := [][20]byte{}
+	if parentSHA != nil {
+		parentsSHA = append(parentsSHA, *parentSHA)
+	}
+
+	// Author, Committer Info
+	author, err := getAuthorInfo()
+	if err != nil {
+		fmt.Println("Error fetching author info from .git/config:", err)
+		return
+	}
+
+	// Write commit object
+	commitSHA, err := writeCommitObject(treeSHA, parentsSHA, author, message)
+	if err != nil {
+		fmt.Println("Error writing commit object:", err)
+		return
+	}
+
+	// Update current branch ref
+	if err := updateBranchRef(commitSHA); err != nil {
+		fmt.Println("Error updating branch ref:", err)
+		return
+	}
+
+	// Print commit message
+	fmt.Printf("[%s] %s\n",
+		string(commitSHA[:3]),
+		strings.Split(message, "\n")[0],
+	)
+
+}
+
+// buildTreeFromIndex builds an in-memory tree structure from the given index entries.
+func buildTreeFromIndex(entries []IndexEntry) *TreeNode {
 
 	// Build the tree structure
 	root := &TreeNode{
@@ -151,7 +207,7 @@ func hashTreeObject(entries []TreeEntry) ([20]byte, error) {
 }
 
 // writeCommitObject creates a Git commit object, writes it to the object database, and returns the commit SHA.
-func writeCommitObject(treeSHA [20]byte, parentsSHA *[][20]byte, author Author, message string) ([20]byte, error) {
+func writeCommitObject(treeSHA [20]byte, parentsSHA [][20]byte, author Author, message string) ([20]byte, error) {
 	var content bytes.Buffer
 
 	// Tree Line : "tree <sha_hex>\n"
@@ -160,7 +216,7 @@ func writeCommitObject(treeSHA [20]byte, parentsSHA *[][20]byte, author Author, 
 	content.WriteByte('\n')
 
 	// Parent Line per parent (if exists) : "parent <sha_parent1>\n"
-	for _, parentSHA := range *parentsSHA {
+	for _, parentSHA := range parentsSHA {
 		content.WriteString("parent ")
 		content.WriteString(hex.EncodeToString(parentSHA[:]))
 		content.WriteByte('\n')
@@ -244,10 +300,74 @@ func writeCommitObject(treeSHA [20]byte, parentsSHA *[][20]byte, author Author, 
 
 // readHEADCommit returns the current HEAD commit SHA. if no commits exist, it returns nil.
 func readHEADCommit() (*[20]byte, error) {
-	return nil, nil
+
+	headPath := filepath.Join(".git", "HEAD")
+
+	// Read .git/HEAD file
+	data, err := os.ReadFile(headPath)
+	if err != nil {
+		return nil, err
+	}
+
+	head := strings.TrimSpace(string(data))
+
+	// Only support attached HEAD for now
+	if !strings.HasPrefix(head, "ref :") {
+		return nil, fmt.Errorf("detached HEAD not supported")
+	}
+
+	refPath := filepath.Join(".git", strings.TrimPrefix(head, "ref: "))
+
+	// Read file at refPath if exists
+	refData, err := os.ReadFile(refPath)
+	if err != nil {
+		// No commits yet -> first commit
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	shaHex := strings.TrimSpace(string(refData))
+	if shaHex == "" {
+		return nil, nil
+	}
+
+	// Decode SHA
+	raw, err := hex.DecodeString(shaHex)
+	if err != nil || len(raw) != 20 {
+		return nil, fmt.Errorf("invalid commit SHA in ref")
+	}
+
+	var sha [20]byte
+	copy(sha[:], raw)
+	return &sha, nil
 }
 
 // updateBranchRef updates the current branch to point to the given commmit SHA.
 func updateBranchRef(commitSHA [20]byte) error {
+	headPath := filepath.Join(".git", "HEAD")
+
+	// Read .git/HEAD file
+	data, err := os.ReadFile(headPath)
+	if err != nil {
+		return err
+	}
+
+	head := strings.TrimSpace(string(data))
+
+	// Only support attached HEAD for now
+	if !strings.HasPrefix(head, "ref :") {
+		return fmt.Errorf("detached HEAD not supported")
+	}
+
+	refPath := filepath.Join(".git", strings.TrimPrefix(head, "ref: "))
+
+	shaHex := hex.EncodeToString(commitSHA[:]) + "\n"
+	// Write shaHex to file
+	if err := os.WriteFile(refPath, []byte(shaHex), DefaultFilePerm); err != nil {
+		return err
+	}
+
 	return nil
 }

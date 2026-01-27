@@ -32,6 +32,9 @@ func main() {
 	case "commit":
 		// Commit changes to the repository
 		porcelain.CommitChanges(os.Args[1:])
+	case "config":
+		// Get or Set keys in .git/config
+		porcelain.GetOrSetConfig(os.Args[1:])
 	default:
 		// Command not found
 		fmt.Printf("gegit: '%s' is not a git command. See 'gegit help' for available commands.\n", os.Args[1])

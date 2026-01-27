@@ -1,7 +1,5 @@
 package porcelain
 
-import "time"
-
 const (
 	DefaultFilePerm = 0o644                      // rw-r--r--
 	DefaultDirPerm  = 0o755                      // rwxr-xr-x
@@ -15,9 +13,11 @@ const (
 	logallrefupdates = true
 	ignorecase = true
 	precomposeunicode = true
-	[user]
-    name = Default User
-    email = user@example.com
+
+[user]
+	name = username
+	email = user@email.com
+
 	` // Default .git/config content
 )
 
@@ -56,7 +56,6 @@ type CommitNode struct {
 type Author struct {
 	Name  string
 	Email string
-	Time  time.Time // used for commit time and TimeZone
 }
 
 // TreeNode represents a node in the in-memory tree structure. Will be used to build tree objects from the index.
