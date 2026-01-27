@@ -77,9 +77,11 @@ func CommitChanges(args []string) {
 		return
 	}
 
-	// Print commit message
+	// hex value of Commit SHA, print it on the console.
+	commitHex := hex.EncodeToString(commitSHA[:])
+
 	fmt.Printf("[%s] %s\n",
-		string(commitSHA[:3]),
+		commitHex[:6],
 		strings.Split(message, "\n")[0],
 	)
 
@@ -312,7 +314,7 @@ func readHEADCommit() (*[20]byte, error) {
 	head := strings.TrimSpace(string(data))
 
 	// Only support attached HEAD for now
-	if !strings.HasPrefix(head, "ref :") {
+	if !strings.HasPrefix(head, "ref: ") {
 		return nil, fmt.Errorf("detached HEAD not supported")
 	}
 
@@ -357,7 +359,7 @@ func updateBranchRef(commitSHA [20]byte) error {
 	head := strings.TrimSpace(string(data))
 
 	// Only support attached HEAD for now
-	if !strings.HasPrefix(head, "ref :") {
+	if !strings.HasPrefix(head, "ref: ") {
 		return fmt.Errorf("detached HEAD not supported")
 	}
 
