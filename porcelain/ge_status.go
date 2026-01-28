@@ -8,7 +8,7 @@ import (
 	"sort"
 	"syscall"
 
-	"github.com/brickster241/GitEngine/utils/types"
+	"github.com/brickster241/GitEngine/plumbing"
 )
 
 // Invoked from main.go. ShowStatus handles the 'gegit status' command to show the working tree status.
@@ -21,18 +21,14 @@ func ShowStatus(args []string) {
 	}
 
 	// Load the index
-	indexPath := filepath.Join(".git", "index")
-	entries, err := loadIndex(indexPath)
+	entries, err := plumbing.LoadIndex()
 	if err != nil {
 		fmt.Println("Error loading index:", err)
 		return
 	}
 
 	// Create a map for quick lookup of existing entries
-	indexMap := map[string]types.IndexEntry{}
-	for _, e := range entries {
-		indexMap[e.Filename] = e
-	}
+	indexMap := plumbing.IndexToMap(entries)
 
 	// Keep track of files in the working directory.
 	workingSet := map[string]bool{}
