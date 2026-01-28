@@ -1,14 +1,16 @@
 package porcelain
 
 import (
+	"encoding/hex"
 	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
-	"syscall"
 
 	"github.com/brickster241/GitEngine/plumbing"
+	"github.com/brickster241/GitEngine/utils/constants"
+	"github.com/brickster241/GitEngine/utils/types"
 )
 
 // Invoked from main.go. ShowStatus handles the 'gegit status' command to show the working tree status.
@@ -18,6 +20,14 @@ func ShowStatus(args []string) {
 		// Invalid usage
 		fmt.Println("usage: gegit status")
 		os.Exit(1)
+	}
+
+	// Get HeadTree Map
+	headTreeSHA, ok, err := plumbing.ReadHEADTreeSHA()
+	headMap := map[string][20]byte{}
+
+	if ok {
+		headMap, _ = plumbing.FlattenTree(headTreeSHA)
 	}
 
 	// Load the index
@@ -30,9 +40,8 @@ func ShowStatus(args []string) {
 	// Create a map for quick lookup of existing entries
 	indexMap := plumbing.IndexToMap(entries)
 
-	// Keep track of files in the working directory.
-	workingSet := map[string]bool{}
-	tracked, modified, newFiles, deleted := []string{}, []string{}, []string{}, []string{}
+	// Create path -> hash Map for workTree
+	workTreeMap := map[string][20]byte{}
 
 	// Walk the working directory to find all files
 	_ = filepath.WalkDir(".", func(path string, d fs.DirEntry, err error) error {
@@ -58,82 +67,133 @@ func ShowStatus(args []string) {
 
 		// Clean and normalize the path
 		cleanPath := filepath.ToSlash(filepath.Clean(path))
-		workingSet[cleanPath] = true
-
-		// Get file info
-		info, err := os.Stat(cleanPath)
-		if err != nil {
-			fmt.Println("Error stating file:", err)
-			os.Exit(1)
-		}
-		stat := info.Sys().(*syscall.Stat_t)
-
-		// Check if already tracked i.e. present in index
-		existing, isTracked := indexMap[cleanPath]
-
-		// Keep track of modified, new and deleted files
-		if isTracked {
-			unchanged :=
-				existing.Dev == uint32(stat.Dev) &&
-					existing.Ino == uint32(stat.Ino) &&
-					existing.FileSize == uint32(info.Size()) &&
-					existing.Mtime == uint32(stat.Mtimespec.Sec) &&
-					existing.MtimeNs == uint32(stat.Mtimespec.Nsec) &&
-					existing.Ctime == uint32(stat.Ctimespec.Sec) &&
-					existing.CtimeNs == uint32(stat.Ctimespec.Nsec)
-
-			if unchanged {
-				// File is unchanged and staged
-				tracked = append(tracked, cleanPath)
-			} else {
-				// File is modified but not staged
-				modified = append(modified, cleanPath)
-			}
+		data, _ := os.ReadFile(cleanPath)
+		sha, err := plumbing.HashObject(types.BlobObject, data)
+		if err == nil {
+			workTreeMap[cleanPath] = sha
 		} else {
-			// New file, untracked not present in index
-			newFiles = append(newFiles, cleanPath)
+			fmt.Println("Error Hashing File:", err)
 		}
 		return nil
 	})
 
-	// Check for deleted files
-	for filename := range indexMap {
-		// If file in index is not in working set, it is deleted
-		if _, exists := workingSet[filename]; !exists {
-			deleted = append(deleted, filename)
+	staged := map[string]types.StatusType{}
+	unstaged := map[string]types.StatusType{}
+	untracked := []string{}
+
+	// Changes to be committed (HEAD <-> INDEX)
+	for path, idxEntry := range indexMap {
+		headSHA, exists := headMap[path]
+		if !exists {
+			// Does not exist in HEAD, will be added as a new file
+			staged[path] = types.AddedStatus
+		} else if headSHA != idxEntry.SHA1 {
+			// Exists in HEAD, but has a different SHA, that means it was modified
+			staged[path] = types.ModifiedStatus
 		}
 	}
 
-	// Sort the lists for consistent output
-	sort.Strings(tracked)
-	sort.Strings(modified)
-	sort.Strings(newFiles)
-	sort.Strings(deleted)
+	// Changes not staged (INDEX <-> WORKTREE)
+	for path, idxEntry := range indexMap {
+		workTreeSHA, exists := workTreeMap[path]
+		if !exists {
+			// Does not exist in workTree, but present in index so deletion has not been added yet.
+			unstaged[path] = types.DeletedStatus
+		} else if workTreeSHA != idxEntry.SHA1 {
+			// Changes exist in worktree, but not in index even though file exists. So, modifications have not been added yet.
+			unstaged[path] = types.ModifiedStatus
+		}
+	}
 
-	// Print the status
-	fmt.Println("On branch master")
+	// Staged Deletions
+	for path := range headMap {
+		if _, exists := indexMap[path]; !exists {
+			// Present in HEAD, but not in index, so stagedDelete.
+			staged[path] = types.DeletedStatus
+		}
+	}
 
-	// Print tracked files
-	if len(tracked) > 0 {
-		fmt.Println("\nChanges to be committed:")
-		for _, f := range tracked {
-			fmt.Printf("\tnewFile/modified/deleted:   %s\n", f)
+	// Untracked Files
+	for path := range workTreeMap {
+		if _, exists := indexMap[path]; !exists {
+			// Present in Worktree, but no entry in Index, so untracked.
+			untracked = append(untracked, path)
 		}
 	}
-	if len(modified) > 0 || len(deleted) > 0 {
-		fmt.Println("\nChanges not staged for commit:")
-		for _, f := range modified {
-			fmt.Printf("\tmodified:   %s\n", f)
-		}
-		for _, f := range deleted {
-			fmt.Printf("\tdeleted:    %s\n", f)
+
+	// First Line : On branch <branchName> or HEAD detached at <sha>
+	head, _ := plumbing.ReadHEADInfo()
+
+	if head.Detached {
+		fmt.Printf("HEAD detached at %s\n", hex.EncodeToString(head.SHA[:]))
+	} else {
+		branch := filepath.Base(head.Ref)
+		fmt.Printf("On branch %s\n", branch)
+	}
+
+	// Also mention if any commits are not present
+	if headTreeSHA == [20]byte{} {
+		fmt.Println("No commits yet")
+	}
+	if len(staged)+len(unstaged)+len(untracked) == 0 {
+		fmt.Println("Nothing to commit, working tree clean")
+		return
+	}
+
+	// Changes to be committed - Section
+	if len(staged) > 0 {
+		fmt.Printf("\n%sChanges to be commited:%s\n", constants.BoldColor, constants.ResetColor)
+
+		for _, path := range sortedKeys(staged) {
+			switch staged[path] {
+			case types.AddedStatus:
+				printStatusLine(constants.GreenColor, "new file:", path)
+			case types.ModifiedStatus:
+				printStatusLine(constants.GreenColor, "modified:", path)
+			case types.DeletedStatus:
+				printStatusLine(constants.GreenColor, "deleted:", path)
+			}
 		}
 	}
-	// Print untracked files
-	if len(newFiles) > 0 {
-		fmt.Println("\nUntracked files:")
-		for _, f := range newFiles {
-			fmt.Printf("\t%s\n", f)
+
+	// Changes not staged for commit - Section
+	if len(unstaged) > 0 {
+		fmt.Printf("\n%sChanges not staged for commit:%s\n", constants.BoldColor, constants.ResetColor)
+		fmt.Println("\t(use \"git add <file>...\" to update what will be committed)")
+
+		for _, path := range sortedKeys(unstaged) {
+			switch unstaged[path] {
+			case types.ModifiedStatus:
+				printStatusLine(constants.RedColor, "modified:", path)
+			case types.DeletedStatus:
+				printStatusLine(constants.RedColor, "deleted:", path)
+			}
 		}
 	}
+
+	// Untracked files
+	if len(untracked) > 0 {
+		fmt.Printf("\n%sUntracked files:%s\n", constants.BoldColor, constants.ResetColor)
+
+		sort.Strings(untracked)
+		for _, f := range untracked {
+			fmt.Printf("\t%s%s%s\n", constants.RedColor, f, constants.ResetColor)
+		}
+	}
+
+}
+
+// Utility to print Status Line
+func printStatusLine(color, label, path string) {
+	fmt.Printf("\t%s%-12s%s %s\n", color, label, path, constants.ResetColor)
+}
+
+// Sort based on keys
+func sortedKeys(m map[string]types.StatusType) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
 }
