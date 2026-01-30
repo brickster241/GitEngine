@@ -5,18 +5,29 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/brickster241/GitEngine/utils"
 	"github.com/brickster241/GitEngine/utils/constants"
 )
 
 // Invoked from main.go. InitRepo handles the 'gegit init' command to initialize a new GitEngine repository. It only calls this function if first argument is init.
 func InitRepo(args []string) {
+
+	// Define flagset
+	fls := utils.CreateCommandFlagSet("init",
+		"This command creates an empty Git repository or reinitializes it - basically a .git directory with subdirectories for objects, refs/heads, refs/tags, index, HEAD and config files. An initial branch without any commits will be created.",
+		"gegit init [<directory>]")
+	fls.Parse(args[1:])
+
+	// Positional arguments (non-flag)
+	pos := fls.Args()
+
 	var repoPath string
 
 	// Determine repository path
-	switch len(args) {
-	case 1:
+	switch len(pos) {
+	case 0:
 		repoPath = "."
-	case 2:
+	case 1:
 		repoPath = args[1]
 
 		if err := os.MkdirAll(repoPath, constants.DefaultDirPerm); err != nil {

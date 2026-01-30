@@ -9,6 +9,7 @@ import (
 	"sort"
 
 	"github.com/brickster241/GitEngine/plumbing"
+	"github.com/brickster241/GitEngine/utils"
 	"github.com/brickster241/GitEngine/utils/constants"
 	"github.com/brickster241/GitEngine/utils/types"
 )
@@ -16,7 +17,18 @@ import (
 // Invoked from main.go. ShowStatus handles the 'gegit status' command to show the working tree status.
 func ShowStatus(args []string) {
 
-	if len(args) != 1 {
+	// Define flagset
+	fls := utils.CreateCommandFlagSet("status",
+		"Displays paths that have differences between the index file and the current HEAD commit, paths that have differences between the working tree and the index file, and paths in the working tree that are not tracked by Git (and are not ignored by gitignore).",
+		"gegit status")
+
+	// Parse flags from args
+	fls.Parse(args[1:])
+
+	// Positional arguments (non-flag)
+	pos := fls.Args()
+
+	if len(pos) != 0 {
 		// Invalid usage
 		fmt.Println("usage: gegit status")
 		os.Exit(1)
@@ -144,7 +156,7 @@ func ShowStatus(args []string) {
 	if len(staged) > 0 {
 		fmt.Printf("\n%sChanges to be commited:%s\n", constants.BoldColor, constants.ResetColor)
 
-		for _, path := range sortedKeys(staged) {
+		for _, path := range utils.SortedKeys(staged) {
 			switch staged[path] {
 			case types.AddedStatus:
 				printStatusLine(constants.GreenColor, "new file:", path)
@@ -161,7 +173,7 @@ func ShowStatus(args []string) {
 		fmt.Printf("\n%sChanges not staged for commit:%s\n", constants.BoldColor, constants.ResetColor)
 		fmt.Println("\t(use \"git add <file>...\" to update what will be committed)")
 
-		for _, path := range sortedKeys(unstaged) {
+		for _, path := range utils.SortedKeys(unstaged) {
 			switch unstaged[path] {
 			case types.ModifiedStatus:
 				printStatusLine(constants.RedColor, "modified:", path)
@@ -186,14 +198,4 @@ func ShowStatus(args []string) {
 // Utility to print Status Line
 func printStatusLine(color, label, path string) {
 	fmt.Printf("\t%s%-12s%s %s\n", color, label, path, constants.ResetColor)
-}
-
-// Sort based on keys
-func sortedKeys(m map[string]types.StatusType) []string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	return keys
 }

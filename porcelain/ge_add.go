@@ -9,6 +9,7 @@ import (
 	"syscall"
 
 	"github.com/brickster241/GitEngine/plumbing"
+	"github.com/brickster241/GitEngine/utils"
 	"github.com/brickster241/GitEngine/utils/types"
 )
 
@@ -70,12 +71,23 @@ func addOrUpdatePath(path string, indexMap map[string]types.IndexEntry, workingS
 	indexMap[cleanPath] = entry
 }
 
-// Invoked from main.go. AddFiles handles the 'gegit add' command to add files to the staging area. It only calls this function if first argument is add.
+// Invoked from main.go. AddFiles handles the 'gegit add' command to add files to the index. It only calls this function if first argument is add.
 func AddFiles(args []string) {
 
-	if len(args) < 2 {
+	// Define flagset
+	fls := utils.CreateCommandFlagSet("add",
+		"Adds contents of new or changed files to the index. The \"index\" (also known as the \"staging area\") is what you use to prepare the contents of the next commit.",
+		"usage: gegit add <file>... | .")
+
+	// Parse flags from args
+	fls.Parse(args[1:])
+
+	// Positional arguments (non-flag)
+	pos := fls.Args()
+
+	if len(pos) == 0 {
 		// No files specified
-		fmt.Println("usage: gegit add . | <file> [<file> ...]")
+		fmt.Println("usage: gegit add <file>... | .")
 		os.Exit(1)
 	}
 
@@ -90,7 +102,7 @@ func AddFiles(args []string) {
 
 	// Keep track of files in the working directory if '.' is specified
 	workingSet := map[string]bool{}
-	isAddAll := slices.Contains(args[1:], ".")
+	isAddAll := slices.Contains(pos, ".")
 
 	// Handle the case where '.' is provided as an argument
 	if isAddAll {

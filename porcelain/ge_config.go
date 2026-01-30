@@ -6,34 +6,47 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/brickster241/GitEngine/utils"
 	"github.com/brickster241/GitEngine/utils/types"
 	"gopkg.in/ini.v1"
 )
 
 // Invoked from main.go. GetOrSetConfig handles 'gegit config' command which is stored at .git/config.
 func GetOrSetConfig(args []string) {
-	if len(args) < 3 {
-		fmt.Println("usage: gegit config set <key> <value>")
-		fmt.Println("ussge: gegit config get <key>")
+
+	// Define flagset
+	fls := utils.CreateCommandFlagSet("config",
+		"Get and set repo config options. This command allows you to read and write configuration values used by GitEngine. Configuration keys are stored as simple key-value pairs (in .git/config).",
+		"gegit config (get <key> | set <key> <value>)")
+
+	// Parse flags from args
+	fls.Parse(args[1:])
+
+	// Positional arguments (non-flag)
+	pos := fls.Args()
+
+	// If no args are provided
+	if len(pos) == 0 {
+		fmt.Println("usage: gegit config (get <key> | set <key> <value>)")
 		os.Exit(1)
 	}
 
-	switch args[1] {
+	switch pos[0] {
 	case "set": // Set config value for specific key
-		if len(args) != 4 {
+		if len(pos) != 3 {
 			fmt.Println("usage: gegit config set <key> <value>")
 			os.Exit(1)
 		}
 
-		if err := setConfig(args[2], args[3]); err != nil {
+		if err := setConfig(pos[1], pos[2]); err != nil {
 			fmt.Println("Error setting Config:", err)
 		}
 	case "get": // Get config value for specific key
-		if len(args) != 3 {
+		if len(pos) != 2 {
 			fmt.Println("usage: gegit config get <key>")
 			os.Exit(1)
 		}
-		val, err := getConfig(args[2])
+		val, err := getConfig(pos[1])
 		if err != nil {
 			fmt.Println("Error getting Config:", err)
 			os.Exit(1)
@@ -42,9 +55,8 @@ func GetOrSetConfig(args []string) {
 		fmt.Println(val)
 
 	default:
-		fmt.Println("unknown config command:", args[1])
-		fmt.Println("usage: gegit config set <key> <value>")
-		fmt.Println("		gegit config get <key>")
+		fmt.Println("unknown config command:", pos[0])
+		fmt.Println("usage: gegit config (get <key> | set <key> <value>)")
 	}
 
 }
