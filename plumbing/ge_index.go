@@ -227,7 +227,7 @@ func GetIndexEntryFromStat(path string, sha1sum [20]byte) (types.IndexEntry, err
 		MtimeNs:  uint32(stat.Mtimespec.Nsec),
 		Dev:      uint32(stat.Dev),
 		Ino:      uint32(stat.Ino),
-		Mode:     constants.RegularFileMode,
+		Mode:     constants.ModeFile,
 		Uid:      uint32(stat.Uid),
 		Gid:      uint32(stat.Gid),
 		FileSize: uint32(info.Size()),

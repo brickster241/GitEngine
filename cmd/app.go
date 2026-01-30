@@ -41,6 +41,9 @@ func main() {
 	case "hash-object":
 		// Compute object id from a file
 		porcelain.HashAndWriteObject(os.Args[1:])
+	case "update-index":
+		// Register file contents in the working tree to the index
+		porcelain.RegisterFileAndUpdateIndex(os.Args[1:])
 	default:
 		// Command not found
 		fmt.Printf("gegit: '%s' is not a git command. See 'gegit help' for available commands.\n", os.Args[1])
