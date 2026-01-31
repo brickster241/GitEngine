@@ -1,6 +1,7 @@
 package porcelain
 
 import (
+	"encoding/hex"
 	"fmt"
 	"os"
 
@@ -32,11 +33,23 @@ func CatFileRepoObject(args []string) {
 		os.Exit(1)
 	}
 
+	// Check whether it can be resolved to Commitish or Treeish object
+	sha, err := plumbing.ResolveCommitish(pos[0])
+	if err != nil {
+		// Try tree-ish
+		sha, err = plumbing.ResolveTreeish(pos[0])
+		if err != nil {
+			fmt.Println("fatal: Not a valid object name:", pos[0])
+			os.Exit(1)
+		}
+	}
+
 	// Get Object Type & Raw content
-	objType, content, err := plumbing.ReadObject(pos[0])
+	shaHex := hex.EncodeToString(sha[:])
+	objType, content, err := plumbing.ReadObject(shaHex)
 	if err != nil {
 		fmt.Println("Error reading object:", err)
-		return
+		os.Exit(1)
 	}
 
 	// Parse flags
@@ -52,7 +65,7 @@ func CatFileRepoObject(args []string) {
 			fmt.Println(string(content))
 		} else {
 			// ReadTree (single-level)
-			entries, _ := plumbing.ReadTree(args[2])
+			entries, _ := plumbing.ReadTreeCurrentLevel(shaHex)
 			for _, e := range entries {
 				fmt.Printf("%s %s %x\t%s\n",
 					e.Mode, e.Type, e.SHA, e.Name)

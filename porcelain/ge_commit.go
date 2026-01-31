@@ -63,7 +63,7 @@ func CommitChanges(args []string) {
 	if headInfo.Detached {
 		parentsSHA = append(parentsSHA, headInfo.SHA)
 	} else {
-		parentSHA, exists := plumbing.ReadBranchRef(headInfo.Ref)
+		parentSHA, exists := plumbing.ReadBranchRef(headInfo.Branch)
 		if exists {
 			parentsSHA = append(parentsSHA, parentSHA)
 		}
@@ -103,7 +103,7 @@ func CommitChanges(args []string) {
 			os.Exit(1)
 		}
 	} else {
-		if err := plumbing.UpdateBranch(headInfo.Ref, commitSHA); err != nil {
+		if err := plumbing.UpdateBranch(headInfo.Branch, commitSHA); err != nil {
 			fmt.Println("Error updating .git/HEAD:", err)
 			os.Exit(1)
 		}

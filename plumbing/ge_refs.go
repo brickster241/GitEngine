@@ -20,9 +20,9 @@ func ReadHEADInfo() (*types.HeadInfo, error) {
 
 	// Symbolic Ref
 	line := strings.TrimSpace(string(data))
-	if strings.HasPrefix(line, "ref: ") {
+	if strings.HasPrefix(line, "ref: refs/heads/") {
 		return &types.HeadInfo{
-			Ref:      strings.TrimPrefix(line, "ref: "),
+			Branch:   strings.TrimPrefix(line, "ref: refs/heads/"),
 			Detached: false,
 		}, nil
 	}
@@ -43,9 +43,9 @@ func ReadHEADInfo() (*types.HeadInfo, error) {
 	}, nil
 }
 
-// ReadBranchRef reads a branch ref (e.g. refs/heads/master). Returns: SHA, exists flag (false if branch does not exist)
-func ReadBranchRef(ref string) ([20]byte, bool) {
-	data, err := os.ReadFile(filepath.Join(".git", ref))
+// ReadBranchRef reads a branch name (e.g. master). Returns: SHA, exists flag (false if branch does not exist)
+func ReadBranchRef(branch string) ([20]byte, bool) {
+	data, err := os.ReadFile(filepath.Join(".git", "refs", "heads", branch))
 	if err != nil {
 		return [20]byte{}, false
 	}
@@ -65,8 +65,8 @@ func ReadBranchRef(ref string) ([20]byte, bool) {
 }
 
 // UpdateBranch updates a branch ref to point to the given SHA. This is used during commit when HEAD is not detached.
-func UpdateBranch(ref string, sha [20]byte) error {
-	refPath := filepath.Join(".git", ref)
+func UpdateBranch(branch string, sha [20]byte) error {
+	refPath := filepath.Join(".git", "refs", "heads", branch)
 
 	// Create directory and file
 	if err := os.MkdirAll(filepath.Dir(refPath), constants.DefaultDirPerm); err != nil {

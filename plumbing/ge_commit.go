@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -121,4 +122,123 @@ func ReadCommit(sha [20]byte) (*types.CommitNode, error) {
 	// Remaining Lines = commit message
 	c.Message = strings.Join(lines[i:], "\n")
 	return &c, nil
+}
+
+// ResolveCommitish takes a commit-ish string, and returns the commit sha associated with it.
+func ResolveCommitish(commitIsh string) ([20]byte, error) {
+
+	var base, suffix string
+	var resultSHA [20]byte // Store resultSHA
+
+	// Check for <base>[(^~)<suffix>]+ pattern.
+	idx := strings.IndexAny(commitIsh, "^~")
+	if idx != -1 {
+		base = commitIsh[:idx]
+	} else {
+		base = commitIsh[:]
+		idx = len(commitIsh)
+	}
+
+	// if base is HEAD
+	if base == "HEAD" {
+
+		// Fetch HEAD Info
+		headInfo, err := ReadHEADInfo()
+		if err != nil {
+			return [20]byte{}, err
+		}
+
+		// If HEAD is detached, return SHA directly, else use ReadBranchRef
+		if headInfo.Detached {
+			resultSHA = headInfo.SHA
+		} else {
+			// If HEAD is not detached, use ref to get commit SHA
+			SHA, exists := ReadBranchRef(headInfo.Branch)
+			if !exists {
+				return [20]byte{}, fmt.Errorf("could not read HEAD ref")
+			}
+			resultSHA = SHA
+		}
+	} else {
+
+		// Assume it is a branch instead
+		shaHex, exists := ReadBranchRef(base)
+		if !exists {
+
+			// Check if it is an commit type object in .git/objects
+			objType, _, err := ReadObject(base)
+			if err != nil || objType != types.CommitObject {
+				return [20]byte{}, fmt.Errorf("invalid object name: %s", base)
+			}
+		}
+		resultSHA = shaHex
+	}
+
+	// Iterate the loop, for each ^ or ~, come up with logic
+	for idx < len(commitIsh) {
+
+		// Get the next sign and do strconv.Atoi to get the number
+		sign := commitIsh[idx]
+		suffix = commitIsh[idx+1:]
+		numStr := "1"
+
+		// If there is some part on the right remaining. Extract the number from it.
+		if len(suffix) > 0 {
+			nxtIdx := strings.IndexAny(suffix, "^~")
+			if nxtIdx == -1 {
+				numStr = suffix
+				idx = len(commitIsh) // Point to the next sign index, which is end of string.
+			} else {
+				numStr = suffix[:nxtIdx]
+				if len(numStr) == 0 {
+					idx += 1
+					numStr = "1"
+				} else {
+					idx += (1 + len(numStr))
+				}
+			}
+		} else {
+			idx += 1
+		}
+
+		// Convert numStr to int to get the number of times we should loop
+		num, err := strconv.Atoi(numStr)
+		if err != nil {
+			return [20]byte{}, fmt.Errorf("%s is not valid suffix after %v", numStr, sign)
+		}
+
+		switch sign {
+		case '~':
+			// Get num(th) ancestor from baseSHA
+			for i := 0; i < num; i++ {
+				commit, err := ReadCommit(resultSHA)
+				if err != nil {
+					return [20]byte{}, err
+				}
+				// If parent commit exists, go to it.
+				if len(commit.ParentsSHA) > 0 {
+					resultSHA = commit.ParentsSHA[0]
+				} else {
+					return [20]byte{}, fmt.Errorf("invalid object name: %s", commitIsh)
+				}
+			}
+		case '^':
+			// Get num(th) Parent from the baseSHA
+			commit, err := ReadCommit(resultSHA)
+			if err != nil {
+				return [20]byte{}, err
+			}
+			// If Nth parent for the curr commit exists, go to it.
+			if len(commit.ParentsSHA) >= num && num > 0 {
+				resultSHA = commit.ParentsSHA[num-1]
+			} else {
+				return [20]byte{}, fmt.Errorf("invalid object name: %s", commitIsh)
+			}
+		default:
+			return [20]byte{}, fmt.Errorf("Error: invalid suffix. Should be ^ or ~.")
+		}
+	}
+
+	// idx reached the end of the commitIsh string, that means we can return the sha now.
+	return resultSHA, nil
 }

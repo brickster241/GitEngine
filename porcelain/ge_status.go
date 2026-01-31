@@ -139,7 +139,7 @@ func ShowStatus(args []string) {
 	if head.Detached {
 		fmt.Printf("HEAD detached at %s\n", hex.EncodeToString(head.SHA[:]))
 	} else {
-		branch := filepath.Base(head.Ref)
+		branch := filepath.Base(head.Branch)
 		fmt.Printf("On branch %s\n", branch)
 	}
 

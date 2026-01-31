@@ -97,15 +97,18 @@ func WriteTree(node *types.TreeNode) ([20]byte, error) {
 	return WriteObject(types.TreeObject, content.Bytes())
 }
 
-// ReadTree reads one object, decodes it and prints it in a type-specific but non-recursive way.
-func ReadTree(treeSHAHex string) ([]types.TreeEntry, error) {
-	objType, content, err := ReadObject(treeSHAHex)
+// ReadTreeCurrentLevel reads one shaHex object, decodes it and prints it in a type-specific but non-recursive way.
+func ReadTreeCurrentLevel(shaHex string) ([]types.TreeEntry, error) {
+
+	// Read Tree Object
+	objType, content, err := ReadObject(shaHex)
 	if err != nil {
 		return nil, err
 	}
 
+	// Added check - see whether it is a tree or not.
 	if objType != types.TreeObject {
-		return nil, fmt.Errorf("object %s is not a tree", treeSHAHex)
+		return nil, fmt.Errorf("object %s is not a tree", shaHex)
 	}
 
 	entries := []types.TreeEntry{}
@@ -165,7 +168,7 @@ func FlattenTree(treeSHA [20]byte) (map[string][20]byte, error) {
 func flattenTreeRecur(treeSHA [20]byte, prefix string, out map[string][20]byte) error {
 
 	// Read Tree at current level
-	entries, err := ReadTree(hex.EncodeToString(treeSHA[:]))
+	entries, err := ReadTreeCurrentLevel(hex.EncodeToString(treeSHA[:]))
 	if err != nil {
 		return err
 	}
@@ -205,7 +208,7 @@ func ReadHEADTreeSHA() ([20]byte, bool, error) {
 	if headInfo.Detached {
 		commitSHA = headInfo.SHA
 	} else {
-		sha, exists := ReadBranchRef(headInfo.Ref)
+		sha, exists := ReadBranchRef(headInfo.Branch)
 		if !exists {
 			return [20]byte{}, false, nil // no commits yet
 		}
@@ -231,4 +234,53 @@ func ReadHEADTreeSHA() ([20]byte, bool, error) {
 
 	// Return error if not found
 	return [20]byte{}, false, fmt.Errorf("invalid commit object content: missing tree line")
+}
+
+// ResolveTreeish takes a tree-ish string, and returns the tree sha associated with it.
+func ResolveTreeish(treeIsh string) ([20]byte, error) {
+
+	// Check whether the tree-ish is actually a commit-ish. If Tree-ish is actually a Commit-ish, return SHA directly using ReadCommit.
+	commitSHA, err := ResolveCommitish(treeIsh)
+	if err == nil {
+		// Use commit SHA to get tree val
+		commit, err := ReadCommit(commitSHA)
+		if err != nil {
+			return [20]byte{}, err
+		}
+		return commit.TreeSHA, nil
+	}
+
+	// Special case, if treeIsh = HEAD^{tree}. HEAD^{N} are already covered above
+	if treeIsh == "HEAD^{tree}" {
+		treeSHA, ok, err := ReadHEADTreeSHA()
+		if err != nil {
+			return [20]byte{}, err
+		}
+		if !ok {
+			return [20]byte{}, fmt.Errorf("No commits yet")
+		}
+		return treeSHA, nil
+	}
+
+	// Check whether the tree-ish object is a valid SHA and is of type tree / commit
+	objType, _, err := ReadObject(treeIsh)
+	if err != nil {
+		return [20]byte{}, err
+	}
+
+	// Decode Tree-ish SHA
+	treeSHA, err := hex.DecodeString(treeIsh)
+	if err != nil {
+		return [20]byte{}, err
+	}
+	var shaArr [20]byte
+	copy(shaArr[:], treeSHA)
+
+	// Check objType and confirm whether it's tree or blob Object. Commit object are parsed already.
+	if objType == types.TreeObject {
+		return shaArr, nil
+	} else {
+		// Blob Object : return error
+		return [20]byte{}, fmt.Errorf("Object Type is not Tree-ish")
+	}
 }
