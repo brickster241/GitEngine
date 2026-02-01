@@ -7,7 +7,7 @@ type Tree struct {
 
 // TreeEntry represents an entry in a tree object
 type TreeEntry struct {
-	Mode string     // "100644", "100755", "40000"
+	Mode uint32     // 100644, 100755, 040000
 	Name string     // filename or directory name
 	SHA  [20]byte   // raw SHA-1 of blob or subtree
 	Type ObjectType // "blob", "tree" or "commit"

@@ -65,7 +65,7 @@ func RegisterFileAndUpdateIndex(args []string) {
 		}
 
 		// Check whether Mode is valid.
-		uint32Mode, err := utils.ParseMode(mode)
+		uint32Mode, err := utils.ParseModeStr(mode)
 		if err != nil {
 			fmt.Println("Error parsing Mode string:", err)
 			os.Exit(1)

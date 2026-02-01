@@ -40,12 +40,16 @@ func CatFileRepoObject(args []string) {
 		sha, err = plumbing.ResolveTreeish(pos[0])
 		if err != nil {
 			fmt.Println("fatal: Not a valid object name:", pos[0])
-			os.Exit(1)
 		}
 	}
 
 	// Get Object Type & Raw content
-	shaHex := hex.EncodeToString(sha[:])
+	var shaHex string
+	if sha != [20]byte{} {
+		shaHex = hex.EncodeToString(sha[:])
+	} else {
+		shaHex = pos[0]
+	}
 	objType, content, err := plumbing.ReadObject(shaHex)
 	if err != nil {
 		fmt.Println("Error reading object:", err)
@@ -67,7 +71,7 @@ func CatFileRepoObject(args []string) {
 			// ReadTree (single-level)
 			entries, _ := plumbing.ReadTreeCurrentLevel(shaHex)
 			for _, e := range entries {
-				fmt.Printf("%s %s %x\t%s\n",
+				fmt.Printf("%06o %s %x\t%s\n",
 					e.Mode, e.Type, e.SHA, e.Name)
 			}
 		}

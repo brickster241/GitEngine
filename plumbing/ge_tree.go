@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"path/filepath"
 	"sort"
 	"strings"
 
+	"github.com/brickster241/GitEngine/utils"
 	"github.com/brickster241/GitEngine/utils/constants"
 	"github.com/brickster241/GitEngine/utils/types"
 )
@@ -57,7 +59,7 @@ func WriteTree(node *types.TreeNode) ([20]byte, error) {
 
 		// Add TreeEntry to the list of entries
 		entries = append(entries, types.TreeEntry{
-			Mode: constants.DirModeStr,
+			Mode: constants.ModeTree,
 			Name: name,
 			SHA:  sha,
 			Type: types.TreeObject,
@@ -67,7 +69,7 @@ func WriteTree(node *types.TreeNode) ([20]byte, error) {
 	// Files
 	for name, ie := range node.Files {
 		entries = append(entries, types.TreeEntry{
-			Mode: constants.FileModeStr,
+			Mode: constants.ModeFile,
 			Name: name,
 			SHA:  ie.SHA1,
 			Type: types.BlobObject,
@@ -84,7 +86,8 @@ func WriteTree(node *types.TreeNode) ([20]byte, error) {
 	// Build Tree content (no header yet)
 	for _, e := range entries {
 		// "<mode> <name>\0"
-		content.WriteString(e.Mode)
+		modeStr := fmt.Sprintf("%06o", e.Mode)
+		content.WriteString(modeStr)
 		content.WriteByte(' ')
 		content.WriteString(e.Name)
 		content.WriteByte(0)
@@ -140,14 +143,20 @@ func ReadTreeCurrentLevel(shaHex string) ([]types.TreeEntry, error) {
 		var sha [20]byte
 		copy(sha[:], content[shaStart:shaEnd])
 
+		// Parse Mode
+		uint32Mode, err := utils.ParseModeStr(mode)
+		if err != nil {
+			return nil, fmt.Errorf("invalid mode format")
+		}
+
 		entryType := types.BlobObject
-		if mode == constants.DirModeStr {
+		if uint32Mode == constants.ModeTree {
 			entryType = types.TreeObject
 		}
 
 		entries = append(entries, types.TreeEntry{
 			Name: name,
-			Mode: mode,
+			Mode: uint32Mode,
 			SHA:  sha,
 			Type: entryType,
 		})
@@ -158,14 +167,14 @@ func ReadTreeCurrentLevel(shaHex string) ([]types.TreeEntry, error) {
 	return entries, nil
 }
 
-// FlattenTree recursively walks a tree object and returns a flat map of path → blob SHA (like Git's index representation).
-func FlattenTree(treeSHA [20]byte) (map[string][20]byte, error) {
-	out := make(map[string][20]byte)
+// FlattenTree recursively walks a tree object and returns a flat map of path → TreeEntry (like Git's index representation).
+func FlattenTree(treeSHA [20]byte) (map[string]types.TreeEntry, error) {
+	out := make(map[string]types.TreeEntry)
 	err := flattenTreeRecur(treeSHA, "", out)
 	return out, err
 }
 
-func flattenTreeRecur(treeSHA [20]byte, prefix string, out map[string][20]byte) error {
+func flattenTreeRecur(treeSHA [20]byte, prefix string, out map[string]types.TreeEntry) error {
 
 	// Read Tree at current level
 	entries, err := ReadTreeCurrentLevel(hex.EncodeToString(treeSHA[:]))
@@ -179,13 +188,19 @@ func flattenTreeRecur(treeSHA [20]byte, prefix string, out map[string][20]byte) 
 		// Generate Path using Prefix and Name
 		path := e.Name
 		if prefix != "" {
-			path = prefix + "/" + e.Name
+			path = filepath.Join(prefix, e.Name)
 		}
 
-		switch e.Type {
-		case types.BlobObject: // It is a Blob, so add it to the map
-			out[path] = e.SHA
-		case types.TreeObject: // It is a Tree, recursive call
+		// In either case of blob or a tree, we add it to the map
+		out[path] = types.TreeEntry{
+			Name: path,
+			Type: e.Type,
+			SHA:  e.SHA,
+			Mode: e.Mode,
+		}
+
+		// It is a Tree, recursive call
+		if e.Type == types.TreeObject {
 			if err := flattenTreeRecur(e.SHA, path, out); err != nil {
 				return err
 			}

@@ -36,10 +36,10 @@ func ShowStatus(args []string) {
 
 	// Get HeadTree Map
 	headTreeSHA, ok, err := plumbing.ReadHEADTreeSHA()
-	headMap := map[string][20]byte{}
+	headTreeEntryMap := map[string]types.TreeEntry{}
 
 	if ok {
-		headMap, _ = plumbing.FlattenTree(headTreeSHA)
+		headTreeEntryMap, _ = plumbing.FlattenTree(headTreeSHA)
 	}
 
 	// Load the index
@@ -95,11 +95,11 @@ func ShowStatus(args []string) {
 
 	// Changes to be committed (HEAD <-> INDEX)
 	for path, idxEntry := range indexMap {
-		headSHA, exists := headMap[path]
+		headTreeEntry, exists := headTreeEntryMap[path]
 		if !exists {
 			// Does not exist in HEAD, will be added as a new file
 			staged[path] = types.AddedStatus
-		} else if headSHA != idxEntry.SHA1 {
+		} else if headTreeEntry.SHA != idxEntry.SHA1 {
 			// Exists in HEAD, but has a different SHA, that means it was modified
 			staged[path] = types.ModifiedStatus
 		}
@@ -118,7 +118,7 @@ func ShowStatus(args []string) {
 	}
 
 	// Staged Deletions
-	for path := range headMap {
+	for path := range headTreeEntryMap {
 		if _, exists := indexMap[path]; !exists {
 			// Present in HEAD, but not in index, so stagedDelete.
 			staged[path] = types.DeletedStatus
@@ -192,7 +192,6 @@ func ShowStatus(args []string) {
 			fmt.Printf("\t%s%s%s\n", constants.RedColor, f, constants.ResetColor)
 		}
 	}
-
 }
 
 // Utility to print Status Line

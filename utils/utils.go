@@ -33,15 +33,11 @@ func SortedKeys(m map[string]types.StatusType) []string {
 }
 
 // Parse Mode string and check if it is a valid value.
-func ParseMode(modeStr string) (uint32, error) {
+func ParseModeStr(modeStr string) (uint32, error) {
 	switch modeStr {
-	case constants.ModeFileStr:
+	case "100644":
 		return constants.ModeFile, nil
-	case constants.ModeExecStr:
-		return constants.ModeExec, nil
-	case constants.ModeSymlinkStr:
-		return constants.ModeSymlink, nil
-	case constants.ModeTreeStr:
+	case "040000":
 		return constants.ModeTree, nil
 	default:
 		return 0, fmt.Errorf("invalid mode: %s", modeStr)
