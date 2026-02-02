@@ -47,6 +47,9 @@ func main() {
 	case "ls-tree":
 		// List the contents of a tree object
 		porcelain.LSTree(os.Args[1:])
+	case "write-tree":
+		// Create a tree object from the current index
+		porcelain.WriteTreeFromIndex(os.Args[1:])
 	default:
 		// Command not found
 		fmt.Printf("gegit: '%s' is not a git command. See 'gegit help' for available commands.\n", os.Args[1])
