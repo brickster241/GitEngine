@@ -38,8 +38,14 @@ func ShowStatus(args []string) {
 	headTreeSHA, ok, err := plumbing.ReadHEADTreeSHA()
 	headTreeEntryMap := map[string]types.TreeEntry{}
 
+	// Use FlattenTree to get all tree entries, and filter blobs.
 	if ok {
-		headTreeEntryMap, _ = plumbing.FlattenTree(headTreeSHA)
+		headAll, _ := plumbing.FlattenTree(headTreeSHA)
+		for path, te := range headAll {
+			if te.Type == types.BlobObject {
+				headTreeEntryMap[path] = te
+			}
+		}
 	}
 
 	// Load the index

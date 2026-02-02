@@ -146,9 +146,15 @@ func AddFiles(args []string) {
 		}
 	}
 
+	// Convert the index map back to slice of IndexEntry.
+	indexEntries := make([]types.IndexEntry, 0, len(indexMap))
+	for _, entry := range indexMap {
+		indexEntries = append(indexEntries, entry)
+	}
+
 	// Write to Index file
-	if err = plumbing.WriteIndex(plumbing.MapToSortedIndex(indexMap)); err != nil {
+	if err = plumbing.WriteIndex(indexEntries); err != nil {
 		fmt.Println("Error writing to .git/index file:", err)
-		return
+		os.Exit(1)
 	}
 }

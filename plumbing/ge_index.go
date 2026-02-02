@@ -115,6 +115,11 @@ func LoadIndex() ([]types.IndexEntry, error) {
 // WriteIndex writes entries back to .git/index (handles adding each entry + checksum)
 func WriteIndex(entries []types.IndexEntry) error {
 
+	// Sort based on filename lexicographically
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].Filename < entries[j].Filename
+	})
+
 	var buffer []byte
 
 	// 12-byte header: "DIRC" + version(2) + entry count
@@ -184,22 +189,6 @@ func IndexToMap(entries []types.IndexEntry) map[string]types.IndexEntry {
 		indexMap[e.Filename] = e
 	}
 	return indexMap
-}
-
-// MapToSortedIndex converts an index map back into a sorted slice. Entries are sorted lexicographically by filename, as required by Git.
-func MapToSortedIndex(indexMap map[string]types.IndexEntry) []types.IndexEntry {
-
-	entries := make([]types.IndexEntry, 0, len(indexMap))
-	for _, entry := range indexMap {
-		entries = append(entries, entry)
-	}
-
-	// Sort based on filename lexicographically
-	sort.Slice(entries, func(i, j int) bool {
-		return entries[i].Filename < entries[j].Filename
-	})
-
-	return entries
 }
 
 // GetIndexEntryFromStat creates a fully populated index entry from the current filesystem state of the given path.

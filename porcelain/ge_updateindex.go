@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 
 	"github.com/brickster241/GitEngine/plumbing"
 	"github.com/brickster241/GitEngine/utils"
@@ -85,12 +84,7 @@ func RegisterFileAndUpdateIndex(args []string) {
 
 		}
 
-		// Sort based on filename lexicographically
-		sort.Slice(entries, func(i, j int) bool {
-			return entries[i].Filename < entries[j].Filename
-		})
-
-		// Write to Index
+		// Write to Index (Will sort entries based on Filename)
 		if err := plumbing.WriteIndex(entries); err != nil {
 			fmt.Println("Error updating Index:", err)
 			os.Exit(1)

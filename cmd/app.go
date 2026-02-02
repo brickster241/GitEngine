@@ -50,6 +50,9 @@ func main() {
 	case "write-tree":
 		// Create a tree object from the current index
 		porcelain.WriteTreeFromIndex(os.Args[1:])
+	case "read-tree":
+		// Reads tree information from treeish object into the index
+		porcelain.ReadTreeToIndex(os.Args[1:])
 	default:
 		// Command not found
 		fmt.Printf("gegit: '%s' is not a git command. See 'gegit help' for available commands.\n", os.Args[1])
