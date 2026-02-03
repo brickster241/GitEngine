@@ -91,3 +91,19 @@ func UpdateHEADDetached(sha [20]byte) error {
 		constants.DefaultFilePerm,
 	)
 }
+
+// CreateBranchRef creates a new branch reference under .git/refs/heads/<name> pointing to the given commit SHA. It fails if the branch already exists.
+func CreateBranchRef(branch string, sha [20]byte) error {
+
+	// Check whether the branch actually already exists
+	_, exists := ReadBranchRef(branch)
+	if exists {
+		return fmt.Errorf("a branch named '%s' already exists\n", branch)
+	}
+
+	// Create refPath, and hexSHA content to be written
+	refPath := filepath.Join(".git", "refs", "heads", branch)
+	hexSHA := hex.EncodeToString(sha[:]) + "\n"
+
+	return os.WriteFile(refPath, []byte(hexSHA), constants.DefaultFilePerm)
+}

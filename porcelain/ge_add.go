@@ -116,7 +116,7 @@ func AddFiles(args []string) {
 				return nil
 			}
 
-			// Skip the .gegit directory
+			// Skip the .git directory
 			if d.IsDir() && d.Name() == ".git" {
 				return filepath.SkipDir
 			}

@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"io/fs"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -298,4 +300,119 @@ func ResolveTreeish(treeIsh string) ([20]byte, error) {
 		// Blob Object : return error
 		return [20]byte{}, fmt.Errorf("Object Type is not Tree-ish")
 	}
+}
+
+// UpdateWorkingTreeToSHA : Given a tree SHA, make the working directory exactly match that tree.
+func UpdateWorkingTreeToSHA(treeSHA [20]byte) error {
+
+	// Get All Tree Entries
+	treeEntries, err := FlattenTree(treeSHA)
+	if err != nil {
+		return err
+	}
+
+	// Scan Working Tree
+	workTreeFiles := map[string]bool{}
+	if err = filepath.WalkDir(".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			fmt.Println("Error accessing path:", err)
+			return nil
+		}
+		// Skip the root directory itself
+		if path == "." {
+			return nil
+		}
+
+		// Skip the .git directory
+		if d.IsDir() && d.Name() == ".git" {
+			return filepath.SkipDir
+		}
+
+		// Skip directories, only add files
+		if d.IsDir() {
+			return nil
+		}
+
+		// Add the file to the map
+		cleanPath := filepath.ToSlash(filepath.Clean(path))
+		workTreeFiles[cleanPath] = true
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	// Delete Files which are not in TreeEntries
+	for path := range workTreeFiles {
+		if _, exists := treeEntries[path]; !exists {
+
+			// Delete From Worktree
+			if err := os.Remove(path); err != nil {
+				return err
+			}
+		}
+	}
+
+	// Write Tree Files to Work Tree
+	for path, entry := range treeEntries {
+
+		// If entry is not a file, don't do anything
+		if entry.Type != types.BlobObject {
+			continue
+		}
+
+		// Read Content from the Tree, and Write it. to the file
+		_, content, err := ReadObject(hex.EncodeToString(entry.SHA[:]))
+		if err != nil {
+			return err
+		}
+
+		// Make required directories if not present
+		if err := os.MkdirAll(filepath.Dir(path), constants.DefaultDirPerm); err != nil {
+			return err
+		}
+
+		// Write content to File
+		if err := os.WriteFile(path, content, constants.DefaultFilePerm); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// CheckoutToTreeSHA: Given a tree SHA, Update the Working directory , .git/index to match the Tree.
+func CheckoutToTreeSHA(treeSHA [20]byte, headContent string) error {
+
+	// UpdateWorkingTree based on treeSHA
+	if err := UpdateWorkingTreeToSHA(treeSHA); err != nil {
+		return fmt.Errorf("could not update working tree: %s", err)
+	}
+
+	// Update in .git/HEAD
+	if err := os.WriteFile(filepath.Join(".git", "HEAD"), []byte(headContent), constants.DefaultFilePerm); err != nil {
+		return fmt.Errorf("could not update .git/HEAD: %s", err)
+	}
+
+	// Update the .git/index : Get Tree Entries and convert them to []IndexEntry
+	treeEntries, err := FlattenTree(treeSHA)
+	if err != nil {
+		return fmt.Errorf("could not flatten Tree contents: %s", err)
+	}
+	treeIndexEntries := []types.IndexEntry{}
+
+	// Iterate through the entries and convert them to []IndexEntry, with default values for everything else. Only blobs will be used.
+	for _, te := range treeEntries {
+		if te.Type == types.BlobObject {
+			treeIndexEntries = append(treeIndexEntries, types.IndexEntry{
+				Filename: te.Name,
+				SHA1:     te.SHA,
+				Mode:     te.Mode,
+			})
+		}
+	}
+
+	// Write the Index based on these new []IndexEntry slice. Will automatically sort based on Filename.
+	if err := WriteIndex(treeIndexEntries); err != nil {
+		return fmt.Errorf("couldn't update .git/index: %s", err)
+	}
+	return nil
 }

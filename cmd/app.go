@@ -53,6 +53,9 @@ func main() {
 	case "read-tree":
 		// Reads tree information from treeish object into the index
 		porcelain.ReadTreeToIndex(os.Args[1:])
+	case "checkout":
+		// Switch branches or restore working tree files.
+		porcelain.CheckoutCommit(os.Args[1:])
 	default:
 		// Command not found
 		fmt.Printf("gegit: '%s' is not a git command. See 'gegit help' for available commands.\n", os.Args[1])
