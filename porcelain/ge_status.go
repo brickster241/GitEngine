@@ -142,11 +142,13 @@ func ShowStatus(args []string) {
 	// First Line : On branch <branchName> or HEAD detached at <sha>
 	head, _ := plumbing.ReadHEADInfo()
 
-	if head.Detached {
-		fmt.Printf("HEAD detached at %s\n", hex.EncodeToString(head.SHA[:]))
-	} else {
-		branch := filepath.Base(head.Branch)
-		fmt.Printf("On branch %s\n", branch)
+	if head.SHA != [20]byte{} && head.Branch != "" {
+		if head.Detached {
+			fmt.Printf("HEAD detached at %s\n", hex.EncodeToString(head.SHA[:]))
+		} else {
+			branch := filepath.Base(head.Branch)
+			fmt.Printf("On branch %s\n", branch)
+		}
 	}
 
 	// Also mention if any commits are not present

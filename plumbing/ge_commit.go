@@ -148,17 +148,14 @@ func ResolveCommitish(commitIsh string) ([20]byte, error) {
 			return [20]byte{}, err
 		}
 
-		// If HEAD is detached, return SHA directly, else use ReadBranchRef
-		if headInfo.Detached {
-			resultSHA = headInfo.SHA
-		} else {
-			// If HEAD is not detached, use ref to get commit SHA
-			SHA, exists := ReadBranchRef(headInfo.Branch)
-			if !exists {
-				return [20]byte{}, fmt.Errorf("could not read HEAD ref")
-			}
-			resultSHA = SHA
+		// No commits case
+		if headInfo.SHA == [20]byte{} {
+			return [20]byte{}, fmt.Errorf("no commits at HEAD")
 		}
+
+		// Get HEAD Info to retrieve SHA
+		resultSHA = headInfo.SHA
+
 	} else {
 
 		// Assume it is a branch instead

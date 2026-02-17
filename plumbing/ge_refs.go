@@ -20,10 +20,23 @@ func ReadHEADInfo() (*types.HeadInfo, error) {
 
 	// Symbolic Ref
 	line := strings.TrimSpace(string(data))
+	branch := strings.TrimPrefix(line, "ref: refs/heads/")
+
+	// Get headSHA
+	headSHA, exists := ReadBranchRef(branch)
+	if !exists {
+		return &types.HeadInfo{
+			SHA:    [20]byte{},
+			Branch: "",
+		}, nil
+	}
+
+	// Non-Detached HEAD
 	if strings.HasPrefix(line, "ref: refs/heads/") {
 		return &types.HeadInfo{
-			Branch:   strings.TrimPrefix(line, "ref: refs/heads/"),
+			Branch:   branch,
 			Detached: false,
+			SHA:      headSHA,
 		}, nil
 	}
 

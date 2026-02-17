@@ -33,11 +33,11 @@ func BranchOps(args []string) {
 	// No. of set flags
 	count := fls.NFlag()
 
-	// If there are no flags set, check whether the format is gegit branch <branch_name> otherwise return an error.
-	if count == 0 {
-
+	switch count {
+	case 0:
+		// If there are no flags set, check whether the format is gegit branch <branch_name> otherwise return an error.
 		switch len(pos) {
-		// List all branches
+		// No extra arguments : List all branches
 		case 0:
 			branchList := []string{}
 			if err := filepath.WalkDir(".git/refs/heads", func(path string, d fs.DirEntry, err error) error {
@@ -78,6 +78,12 @@ func BranchOps(args []string) {
 				os.Exit(1)
 			}
 
+			// Check if a commit is present at HEAD.
+			if headInfo.SHA == [20]byte{} {
+				fmt.Println("No commits at HEAD:", err)
+				os.Exit(1)
+			}
+
 			// If HEAD is detached, add an extra line.
 			if headInfo.Detached {
 				hexSHA := hex.EncodeToString(headInfo.SHA[:])
@@ -91,19 +97,44 @@ func BranchOps(args []string) {
 				}
 			}
 
-		// Create a new branch -> gegit branch <branch_name>, pointing to HEAD but don't switch it.
+		// Exactly one extra argument : Create a new branch -> gegit branch <branch_name>, pointing to HEAD but don't switch it.
 		case 1:
-			fmt.Println("Creating bRANCH")
+			// Check whether the branch actually already exists
+			_, exists := plumbing.ReadBranchRef(pos[0])
+			if exists {
+				fmt.Printf("Error: Branch named '%s' already exists\n", pos[0])
+				os.Exit(1)
+			}
 
-		// Invalid usage
+			// Get current HEAD SHA by reading .git/HEAD
+			headInfo, err := plumbing.ReadHEADInfo()
+			if err != nil {
+				fmt.Println("Error fetching HEAD Info:", err)
+				os.Exit(1)
+			}
+
+			// If there is no SHA in head ref
+			if headInfo.SHA == [20]byte{} {
+				fmt.Println("Error: HEAD branch ref missing")
+				os.Exit(1)
+			}
+
+			// Create Branch Ref
+			if err := plumbing.CreateBranchRef(pos[0], headInfo.SHA); err != nil {
+				fmt.Println("Error creating branch:", err)
+				os.Exit(1)
+			}
+
+		// Default case: Invalid usage
 		default:
 			fmt.Println("usage: gegit branch [-d] <branch-name> | -m <old-branch> <new-branch> | -c <existing-branch> <new-branch>")
 			os.Exit(1)
 		}
-	} else if count == 1 {
+
+	case 1:
 		// If there is exactly one flag set, i.e. m or c or d.
 
-	} else {
+	default:
 		fmt.Print(m, c, d)
 		// Invalid usage
 		fmt.Println("usage: gegit branch [-d] <branch-name> | -m <old-branch> <new-branch> | -c <existing-branch> <new-branch>")

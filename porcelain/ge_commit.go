@@ -59,15 +59,11 @@ func CommitChanges(args []string) {
 		os.Exit(1)
 	}
 
+	// Append the HEAD SHA to parents
 	parentsSHA := [][20]byte{}
-	if headInfo.Detached {
+	if headInfo.SHA != [20]byte{} {
+		// At least 1 commit present
 		parentsSHA = append(parentsSHA, headInfo.SHA)
-	} else {
-		parentSHA, exists := plumbing.ReadBranchRef(headInfo.Branch)
-		if exists {
-			parentsSHA = append(parentsSHA, parentSHA)
-		}
-		// Else initial commit, no parents
 	}
 
 	// Check if there are no changes between Head tree and current index tree

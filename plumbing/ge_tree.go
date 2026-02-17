@@ -220,20 +220,13 @@ func ReadHEADTreeSHA() ([20]byte, bool, error) {
 		return [20]byte{}, false, err
 	}
 
-	var commitSHA [20]byte
-
-	if headInfo.Detached {
-		commitSHA = headInfo.SHA
-	} else {
-		sha, exists := ReadBranchRef(headInfo.Branch)
-		if !exists {
-			return [20]byte{}, false, nil // no commits yet
-		}
-		commitSHA = sha
+	// If No SHA is present, that means there are no commits
+	if headInfo.SHA == [20]byte{} {
+		return [20]byte{}, false, nil // no commits yet
 	}
 
 	// Read Content for the Commit object
-	_, content, err := ReadObject(hex.EncodeToString(commitSHA[:]))
+	_, content, err := ReadObject(hex.EncodeToString(headInfo.SHA[:]))
 	if err != nil {
 		return [20]byte{}, false, err
 	}
