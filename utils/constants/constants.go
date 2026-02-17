@@ -12,8 +12,10 @@ const (
 	BoldColor       = "\033[1m"
 	GreenColor      = "\033[32m"
 	RedColor        = "\033[31m"
-	Head            = "ref: refs/heads/master\n" // Default .git/HEAD content
-	Config          = `[core]
+	YellowColor     = "\033[33m"
+
+	Head   = "ref: refs/heads/master\n" // Default .git/HEAD content
+	Config = `[core]
 	repositoryformatversion = 0
 	filemode = true
 	bare = false

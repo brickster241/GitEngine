@@ -16,7 +16,7 @@ func CreateCommandFlagSet(name, desc, usage string) *flag.FlagSet {
 	fls := flag.NewFlagSet(name, flag.ExitOnError)
 	fls.Usage = func() {
 		fmt.Fprintf(os.Stderr, "\n%sDescription:%s\n\n\t %s\n\n", constants.BoldColor, constants.ResetColor, desc)
-		fmt.Fprintf(os.Stderr, "%sUsage: %s%s%s\n\n", constants.BoldColor, constants.GreenColor, usage, constants.ResetColor)
+		fmt.Fprintf(os.Stderr, "%sUsage:  %s%s%s\n\n", constants.BoldColor, constants.GreenColor, usage, constants.ResetColor)
 		fls.PrintDefaults()
 	}
 	return fls

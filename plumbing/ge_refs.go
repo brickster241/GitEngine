@@ -64,8 +64,8 @@ func ReadBranchRef(branch string) ([20]byte, bool) {
 
 }
 
-// UpdateBranch updates a branch ref to point to the given SHA. This is used during commit when HEAD is not detached.
-func UpdateBranch(branch string, sha [20]byte) error {
+// UpdateBranchRefWithSHA updates a branch ref to point to the given SHA. This is used during commit when HEAD is not detached.
+func UpdateBranchRefWithSHA(branch string, sha [20]byte) error {
 	refPath := filepath.Join(".git", "refs", "heads", branch)
 
 	// Create directory and file
