@@ -18,35 +18,36 @@ func ReadHEADInfo() (*types.HeadInfo, error) {
 		return nil, err
 	}
 
-	// Symbolic Ref
 	line := strings.TrimSpace(string(data))
-	branch := strings.TrimPrefix(line, "ref: refs/heads/")
 
-	// Get headSHA
-	headSHA, exists := ReadBranchRef(branch)
-	if !exists {
-		return &types.HeadInfo{
-			SHA:    [20]byte{},
-			Branch: "",
-		}, nil
-	}
-
-	// Non-Detached HEAD
+	// Case 1: Symbolic HEAD
 	if strings.HasPrefix(line, "ref: refs/heads/") {
+
+		branch := strings.TrimPrefix(line, "ref: refs/heads/")
+
+		sha, exists := ReadBranchRef(branch)
+
+		if !exists {
+			return &types.HeadInfo{
+				Branch:   branch,
+				Detached: false,
+				SHA:      [20]byte{},
+			}, nil
+		}
+
 		return &types.HeadInfo{
 			Branch:   branch,
 			Detached: false,
-			SHA:      headSHA,
+			SHA:      sha,
 		}, nil
 	}
 
-	// Detached HEAD
+	// Case 2: Detached HEAD
 	shaBytes, err := hex.DecodeString(line)
 	if err != nil || len(shaBytes) != 20 {
 		return nil, fmt.Errorf("invalid HEAD contents")
 	}
 
-	// Copy SHA into new variable
 	var sha [20]byte
 	copy(sha[:], shaBytes)
 

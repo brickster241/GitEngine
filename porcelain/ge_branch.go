@@ -80,7 +80,7 @@ func BranchOps(args []string) {
 
 			// Check if a commit is present at HEAD.
 			if headInfo.SHA == [20]byte{} {
-				fmt.Println("No commits at HEAD:", err)
+				fmt.Println("No commits at HEAD")
 				os.Exit(1)
 			}
 
@@ -131,11 +131,126 @@ func BranchOps(args []string) {
 			os.Exit(1)
 		}
 
-	case 1:
-		// If there is exactly one flag set, i.e. m or c or d.
+	case 1: // If there is exactly one flag set, i.e. m or c or d.
+
+		// git branch -d <branch_name>
+		if *d {
+
+			// Check if the HEAD is symbolic and branch_name is the current branch
+			headInfo, err := plumbing.ReadHEADInfo()
+			if err != nil {
+				fmt.Printf("Error: could not fetch HEAD -> %s\n", err)
+				os.Exit(1)
+			}
+
+			for _, curr := range pos {
+				// Check whether the branch actually already exists
+				_, exists := plumbing.ReadBranchRef(curr)
+				if !exists {
+					fmt.Printf("Error: Branch named '%s' doesn't exist\n", curr)
+					os.Exit(1)
+				}
+
+				if !headInfo.Detached && headInfo.Branch == curr {
+					fmt.Printf("Error: Cannot delete current Branch named '%s'\n", curr)
+					os.Exit(1)
+				}
+
+				// Remove .git/refs/heads/<branch_name> file
+				cleanPath := filepath.Join(".git", "refs", "heads", curr)
+				if err := os.Remove(cleanPath); err != nil && !os.IsNotExist(err) {
+					fmt.Printf("Error: could not delete %s -> %s\n", cleanPath, err)
+					os.Exit(1)
+				}
+			}
+		} else
+
+		// git branch -m <old_branch> <new_branch>
+		if *m {
+
+			if len(pos) != 2 {
+				// Invalid usage
+				fmt.Println("usage: gegit branch [-d] <branch-name> | -m <old-branch> <new-branch> | -c <existing-branch> <new-branch>")
+				os.Exit(1)
+			}
+			old_branch := pos[0]
+			new_branch := pos[1]
+
+			// Check whether the old branch actually exists
+			_, exists := plumbing.ReadBranchRef(old_branch)
+			if !exists {
+				fmt.Printf("Error: Branch named '%s' doesn't exist\n", old_branch)
+				os.Exit(1)
+			}
+
+			// Check whether the renamed branch already exists
+			_, exists = plumbing.ReadBranchRef(new_branch)
+			if exists {
+				fmt.Printf("Error: Renamed Branch '%s' already exists\n", new_branch)
+				os.Exit(1)
+			}
+
+			// Rename .git/refs/heads/<old_branch> to .gits/refs/heads/<new_branch>
+			oldPath := filepath.Clean(filepath.Join(".git", "refs", "heads", old_branch))
+			newPath := filepath.Clean(filepath.Join(".git", "refs", "heads", new_branch))
+			headPath := filepath.Join(".git", "HEAD")
+			headContent := "ref: " + filepath.Join("refs", "heads", new_branch) + "\n"
+
+			if err := os.Rename(oldPath, newPath); err != nil {
+				fmt.Printf("Error: Could not rename Branch '%s' to %s -> %s\n", old_branch, new_branch, err)
+				os.Exit(1)
+			}
+
+			// If old branch is the current branch, then update .git/HEAD if it is symbolic
+			headInfo, err := plumbing.ReadHEADInfo()
+			if err != nil {
+				fmt.Printf("Error: could not fetch HEAD -> %s\n", err)
+				os.Exit(1)
+			}
+
+			// Write to .git/HEAD with ref: refs/heads/<new_branch>\n
+			if !headInfo.Detached && headInfo.Branch == old_branch {
+				if err := os.WriteFile(headPath, []byte(headContent), constants.DefaultFilePerm); err != nil {
+					fmt.Printf("Error writing to file '%s': %s\n", headPath, err)
+					os.Exit(1)
+				}
+			}
+		} else
+
+		// git branch -c <old_branch> <new_branch>
+		if *c {
+
+			if len(pos) != 2 {
+				// Invalid usage
+				fmt.Println("usage: gegit branch [-d] <branch-name> | -m <old-branch> <new-branch> | -c <existing-branch> <new-branch>")
+				os.Exit(1)
+			}
+
+			old_branch := pos[0]
+			new_branch := pos[1]
+
+			// Check whether the old branch exists
+			sha, exists := plumbing.ReadBranchRef(old_branch)
+			if !exists {
+				fmt.Printf("Error: Branch named '%s' doesn't exist\n", old_branch)
+				os.Exit(1)
+			}
+
+			// Check whether the new branch already exists
+			_, exists = plumbing.ReadBranchRef(new_branch)
+			if exists {
+				fmt.Printf("Error: Branch '%s' already exists\n", new_branch)
+				os.Exit(1)
+			}
+
+			// Create new branch pointing to same SHA
+			if err := plumbing.CreateBranchRef(new_branch, sha); err != nil {
+				fmt.Printf("Error: Could not create branch '%s' -> %s\n", new_branch, err)
+				os.Exit(1)
+			}
+		}
 
 	default:
-		fmt.Print(m, c, d)
 		// Invalid usage
 		fmt.Println("usage: gegit branch [-d] <branch-name> | -m <old-branch> <new-branch> | -c <existing-branch> <new-branch>")
 		os.Exit(1)

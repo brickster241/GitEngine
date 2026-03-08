@@ -166,9 +166,13 @@ func ResolveCommitish(commitIsh string) ([20]byte, error) {
 			objType, _, err := ReadObject(base)
 			if err != nil || objType != types.CommitObject {
 				return [20]byte{}, fmt.Errorf("invalid object name: %s", base)
+			} else {
+				shaBytes, _ := hex.DecodeString(base)
+				resultSHA = [20]byte(shaBytes)
 			}
+		} else {
+			resultSHA = shaHex
 		}
-		resultSHA = shaHex
 	}
 
 	// Iterate the loop, for each ^ or ~, come up with logic
