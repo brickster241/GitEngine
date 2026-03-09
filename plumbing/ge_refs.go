@@ -119,5 +119,9 @@ func CreateBranchRef(branch string, sha [20]byte) error {
 	refPath := filepath.Join(".git", "refs", "heads", branch)
 	hexSHA := hex.EncodeToString(sha[:]) + "\n"
 
+	// Ensure parent directories exist (for nested branch names)
+	if err := os.MkdirAll(filepath.Dir(refPath), constants.DefaultDirPerm); err != nil {
+		return err
+	}
 	return os.WriteFile(refPath, []byte(hexSHA), constants.DefaultFilePerm)
 }
