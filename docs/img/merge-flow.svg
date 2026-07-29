@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 430" font-family="Menlo, Consolas, monospace" font-size="13">
+  <defs>
+    <marker id="arr2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#7a869a"/>
+    </marker>
+  </defs>
+  <rect width="860" height="430" fill="#0d1117"/>
+  <text x="24" y="34" fill="#e6edf3" font-size="16" font-weight="bold">Three-way merge: merge-base → tree walk → diff3 → commit or conflict</text>
+
+  <!-- commits -->
+  <rect x="40" y="70" width="160" height="42" rx="8" fill="#20262e" stroke="#e3b341"/>
+  <text x="120" y="96" fill="#e3b341" text-anchor="middle">BASE = merge-base</text>
+  <rect x="40" y="140" width="160" height="42" rx="8" fill="#1c2b3a" stroke="#79c0ff"/>
+  <text x="120" y="166" fill="#79c0ff" text-anchor="middle">OURS (HEAD)</text>
+  <rect x="40" y="210" width="160" height="42" rx="8" fill="#2b1e2e" stroke="#f778ba"/>
+  <text x="120" y="236" fill="#f778ba" text-anchor="middle">THEIRS (branch)</text>
+
+  <!-- tree walk -->
+  <rect x="280" y="128" width="220" height="118" rx="8" fill="#161b22" stroke="#30363d"/>
+  <text x="390" y="150" fill="#e6edf3" text-anchor="middle" font-weight="bold">per-path 3-way walk</text>
+  <text x="294" y="172" fill="#8b949e" font-size="11">same on both sides → keep</text>
+  <text x="294" y="188" fill="#8b949e" font-size="11">only one side changed → take it</text>
+  <text x="294" y="204" fill="#8b949e" font-size="11">delete vs modify → conflict</text>
+  <text x="294" y="220" fill="#8b949e" font-size="11">both changed → line-level diff3</text>
+  <line x1="200" y1="91" x2="278" y2="160" stroke="#7a869a" stroke-width="1.5" marker-end="url(#arr2)"/>
+  <line x1="200" y1="161" x2="278" y2="180" stroke="#7a869a" stroke-width="1.5" marker-end="url(#arr2)"/>
+  <line x1="200" y1="231" x2="278" y2="205" stroke="#7a869a" stroke-width="1.5" marker-end="url(#arr2)"/>
+
+  <!-- diff3 box -->
+  <rect x="280" y="290" width="220" height="98" rx="8" fill="#161b22" stroke="#30363d"/>
+  <text x="390" y="312" fill="#e6edf3" text-anchor="middle" font-weight="bold">diff3 (LCS per side)</text>
+  <text x="294" y="332" fill="#8b949e" font-size="11">align edits on base regions;</text>
+  <text x="294" y="348" fill="#8b949e" font-size="11">disjoint blocks merge clean,</text>
+  <text x="294" y="364" fill="#8b949e" font-size="11">overlapping different edits →</text>
+  <text x="294" y="380" fill="#8b949e" font-size="11">&lt;&lt;&lt;&lt;&lt;&lt;&lt; ==== &gt;&gt;&gt;&gt;&gt;&gt;&gt; markers</text>
+  <line x1="390" y1="246" x2="390" y2="288" stroke="#7a869a" stroke-width="1.5" marker-end="url(#arr2)"/>
+
+  <!-- outcomes -->
+  <rect x="590" y="106" width="240" height="88" rx="8" fill="#1e2b22" stroke="#3fb950"/>
+  <text x="710" y="128" fill="#3fb950" text-anchor="middle" font-weight="bold">CLEAN</text>
+  <text x="604" y="148" fill="#c9d1d9" font-size="11">merged index → write-tree →</text>
+  <text x="604" y="164" fill="#c9d1d9" font-size="11">merge commit, parents [ours,theirs]</text>
+  <text x="604" y="180" fill="#8b949e" font-size="11">SHA equals native git (verified)</text>
+
+  <rect x="590" y="230" width="240" height="104" rx="8" fill="#2e1c1c" stroke="#f85149"/>
+  <text x="710" y="252" fill="#f85149" text-anchor="middle" font-weight="bold">CONFLICT</text>
+  <text x="604" y="272" fill="#c9d1d9" font-size="11">marker files → worktree,</text>
+  <text x="604" y="288" fill="#c9d1d9" font-size="11">.git/MERGE_HEAD recorded,</text>
+  <text x="604" y="304" fill="#c9d1d9" font-size="11">index untouched (markers can't</text>
+  <text x="604" y="320" fill="#c9d1d9" font-size="11">be committed by accident)</text>
+
+  <line x1="500" y1="160" x2="588" y2="150" stroke="#3fb950" stroke-width="1.5" marker-end="url(#arr2)"/>
+  <line x1="500" y1="220" x2="588" y2="270" stroke="#f85149" stroke-width="1.5" marker-end="url(#arr2)"/>
+
+  <!-- rebase strip -->
+  <rect x="40" y="396" width="790" height="1" fill="#30363d"/>
+  <text x="40" y="418" fill="#8b949e" font-size="11">rebase = this machinery per commit: base = the commit's own parent, replayed onto the growing tip; authorship preserved; any conflict aborts atomically before refs move</text>
+</svg>

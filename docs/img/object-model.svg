@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 400" font-family="Menlo, Consolas, monospace" font-size="13">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#7a869a"/>
+    </marker>
+  </defs>
+  <rect width="860" height="400" fill="#0d1117"/>
+  <text x="24" y="34" fill="#e6edf3" font-size="16" font-weight="bold">GitEngine object model — everything is content-addressed</text>
+
+  <!-- refs layer -->
+  <rect x="24" y="70" width="150" height="46" rx="8" fill="#1c2333" stroke="#3d4b66"/>
+  <text x="99" y="90" fill="#79c0ff" text-anchor="middle" font-weight="bold">.git/HEAD</text>
+  <text x="99" y="107" fill="#8b949e" text-anchor="middle" font-size="11">ref: refs/heads/master</text>
+
+  <rect x="24" y="150" width="150" height="46" rx="8" fill="#1c2333" stroke="#3d4b66"/>
+  <text x="99" y="170" fill="#79c0ff" text-anchor="middle" font-weight="bold">refs/heads/master</text>
+  <text x="99" y="187" fill="#8b949e" text-anchor="middle" font-size="11">a1b2c3…  (40-hex SHA)</text>
+
+  <line x1="99" y1="116" x2="99" y2="148" stroke="#7a869a" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- commit -->
+  <rect x="250" y="132" width="180" height="86" rx="8" fill="#20262e" stroke="#e3b341"/>
+  <text x="340" y="152" fill="#e3b341" text-anchor="middle" font-weight="bold">commit a1b2c3</text>
+  <text x="264" y="172" fill="#c9d1d9" font-size="11">tree  9f8e7d…</text>
+  <text x="264" y="188" fill="#c9d1d9" font-size="11">parent 4d5e6f…  (0..n)</text>
+  <text x="264" y="204" fill="#c9d1d9" font-size="11">author / committer / msg</text>
+  <line x1="174" y1="173" x2="248" y2="173" stroke="#7a869a" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- parent chain -->
+  <rect x="250" y="252" width="180" height="40" rx="8" fill="#20262e" stroke="#6e5c1e"/>
+  <text x="340" y="277" fill="#b0a04a" text-anchor="middle">commit 4d5e6f  (parent)</text>
+  <line x1="340" y1="218" x2="340" y2="250" stroke="#7a869a" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="352" y="240" fill="#8b949e" font-size="11">history DAG</text>
+
+  <!-- tree -->
+  <rect x="500" y="120" width="200" height="96" rx="8" fill="#1e2b22" stroke="#3fb950"/>
+  <text x="600" y="140" fill="#3fb950" text-anchor="middle" font-weight="bold">tree 9f8e7d  (root)</text>
+  <text x="514" y="160" fill="#c9d1d9" font-size="11">100644 README.md → blob</text>
+  <text x="514" y="176" fill="#c9d1d9" font-size="11">100644 main.go   → blob</text>
+  <text x="514" y="192" fill="#c9d1d9" font-size="11">40000  src/      → tree</text>
+  <text x="514" y="208" fill="#8b949e" font-size="10">sorted: dirs compare as "name/"</text>
+  <line x1="430" y1="168" x2="498" y2="168" stroke="#7a869a" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- blobs + subtree -->
+  <rect x="740" y="86" width="100" height="40" rx="8" fill="#26212e" stroke="#bc8cff"/>
+  <text x="790" y="111" fill="#bc8cff" text-anchor="middle">blob 5c1a…</text>
+  <rect x="740" y="146" width="100" height="40" rx="8" fill="#26212e" stroke="#bc8cff"/>
+  <text x="790" y="171" fill="#bc8cff" text-anchor="middle">blob 77e2…</text>
+  <rect x="740" y="206" width="100" height="40" rx="8" fill="#1e2b22" stroke="#3fb950"/>
+  <text x="790" y="231" fill="#3fb950" text-anchor="middle">tree c4d9…</text>
+  <line x1="700" y1="156" x2="738" y2="108" stroke="#7a869a" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="700" y1="170" x2="738" y2="166" stroke="#7a869a" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="700" y1="190" x2="738" y2="224" stroke="#7a869a" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- index + worktree strip -->
+  <rect x="24" y="320" width="816" height="52" rx="8" fill="#161b22" stroke="#30363d"/>
+  <text x="40" y="342" fill="#e6edf3" font-weight="bold">.git/index (DIRC v2)</text>
+  <text x="40" y="360" fill="#8b949e" font-size="11">staging area: path → (SHA, mode, stat) — written via index.lock + atomic rename; every object write is tmp-file + rename (crash-safe)</text>
+  <text x="620" y="342" fill="#e6edf3" font-weight="bold">object store .git/objects/aa/bbbb…</text>
+  <text x="620" y="360" fill="#8b949e" font-size="11">zlib("&lt;type&gt; &lt;size&gt;\0&lt;content&gt;"), name = SHA-1 of bytes</text>
+</svg>
