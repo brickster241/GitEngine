@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strconv"
 
 	"github.com/brickster241/GitEngine/utils/constants"
 	"github.com/brickster241/GitEngine/utils/types"
@@ -34,12 +35,18 @@ func SortedKeys(m map[string]types.StatusType) []string {
 
 // Parse Mode string and check if it is a valid value.
 func ParseModeStr(modeStr string) (uint32, error) {
-	switch modeStr {
-	case "100644":
-		return constants.ModeFile, nil
-	case "040000":
-		return constants.ModeTree, nil
-	default:
+	// Parse as octal: native Git writes tree modes WITHOUT leading zeros
+	// ("40000" for directories, "100644"/"100755" for blobs), while older
+	// GitEngine trees carried zero-padded "040000". Accepting both keeps us
+	// readable against every real repository.
+	mode, err := strconv.ParseUint(modeStr, 8, 32)
+	if err != nil {
 		return 0, fmt.Errorf("invalid mode: %s", modeStr)
+	}
+	switch uint32(mode) {
+	case constants.ModeFile, constants.ModeExec, constants.ModeSymlink, constants.ModeTree:
+		return uint32(mode), nil
+	default:
+		return 0, fmt.Errorf("unsupported mode: %s", modeStr)
 	}
 }

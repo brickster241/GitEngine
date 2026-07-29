@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/brickster241/GitEngine/utils"
@@ -56,7 +57,7 @@ func WriteTree(node *types.TreeNode) ([20]byte, error) {
 	for name, child := range node.Dirs {
 		sha, err := WriteTree(child)
 		if err != nil {
-			return [20]byte{}, nil
+			return [20]byte{}, err
 		}
 
 		// Add TreeEntry to the list of entries
@@ -78,17 +79,30 @@ func WriteTree(node *types.TreeNode) ([20]byte, error) {
 		})
 	}
 
-	// Sort the entries now
+	// Sort the entries in Git's canonical tree order: names compare byte-wise
+	// but DIRECTORIES sort as "<name>/". Plain name sorting diverges from Git
+	// whenever a directory name is a prefix of a sibling ("foo" dir vs
+	// "foo.txt"), which changes the tree bytes and therefore every SHA above
+	// it. Caught by the differential suite against real Git.
+	sortKey := func(e types.TreeEntry) string {
+		if e.Type == types.TreeObject {
+			return e.Name + "/"
+		}
+		return e.Name
+	}
 	sort.Slice(entries, func(i, j int) bool {
-		return entries[i].Name < entries[j].Name
+		return sortKey(entries[i]) < sortKey(entries[j])
 	})
 
 	var content bytes.Buffer
 
 	// Build Tree content (no header yet)
 	for _, e := range entries {
-		// "<mode> <name>\0"
-		modeStr := fmt.Sprintf("%06o", e.Mode)
+		// "<mode> <name>\0" — Git writes the mode WITHOUT leading zeros:
+		// "100644" for blobs but "40000" (not "040000") for trees. Zero-padding
+		// produces valid-looking trees whose bytes (and SHAs) disagree with
+		// native Git. Caught by the differential suite.
+		modeStr := strconv.FormatUint(uint64(e.Mode), 8)
 		content.WriteString(modeStr)
 		content.WriteByte(' ')
 		content.WriteString(e.Name)
@@ -404,7 +418,7 @@ func CheckoutToTreeSHA(treeSHA [20]byte, headContent string) error {
 	}
 
 	// Write the Index based on these new []IndexEntry slice. Will automatically sort based on Filename.
-	if err := WriteIndex(treeIndexEntries); err != nil {
+	if err := WriteIndexLocked(treeIndexEntries); err != nil {
 		return fmt.Errorf("couldn't update .git/index: %s", err)
 	}
 	return nil
