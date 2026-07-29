@@ -56,7 +56,7 @@ func ReadTreeToIndex(args []string) {
 	}
 
 	// Write the Index based on these new []IndexEntry slice. Will automatically sort based on Filename.
-	if err := plumbing.WriteIndex(treeIndexEntries); err != nil {
+	if err := plumbing.WriteIndexLocked(treeIndexEntries); err != nil {
 		fmt.Println("Error updating Index:", err)
 		os.Exit(1)
 	}

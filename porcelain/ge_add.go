@@ -153,7 +153,7 @@ func AddFiles(args []string) {
 	}
 
 	// Write to Index file
-	if err = plumbing.WriteIndex(indexEntries); err != nil {
+	if err = plumbing.WriteIndexLocked(indexEntries); err != nil {
 		fmt.Println("Error writing to .git/index file:", err)
 		os.Exit(1)
 	}

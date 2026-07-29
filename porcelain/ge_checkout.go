@@ -209,7 +209,7 @@ func CheckoutCommit(args []string) {
 		}
 
 		// Write the Index based on these new []IndexEntry slice. Will automatically sort based on Filename.
-		if err := plumbing.WriteIndex(updatedIndexEntries); err != nil {
+		if err := plumbing.WriteIndexLocked(updatedIndexEntries); err != nil {
 			fmt.Printf("couldn't update .git/index: %s\n", err)
 			os.Exit(1)
 		}

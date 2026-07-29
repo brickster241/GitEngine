@@ -115,6 +115,18 @@ func LoadIndex() ([]types.IndexEntry, error) {
 // WriteIndex writes entries back to .git/index (handles adding each entry + checksum)
 func WriteIndex(entries []types.IndexEntry) error {
 
+	// Write updated index file
+	if err := os.WriteFile(filepath.Join(".git", "index"), serializeIndex(entries), constants.DefaultFilePerm); err != nil {
+		return err
+	}
+	return nil
+}
+
+// serializeIndex renders entries in DIRC v2 wire format (header, sorted
+// entries with 8-byte alignment, trailing SHA-1 checksum). Shared by the
+// direct and the locked/atomic write paths.
+func serializeIndex(entries []types.IndexEntry) []byte {
+
 	// Sort based on filename lexicographically
 	sort.Slice(entries, func(i, j int) bool {
 		return entries[i].Filename < entries[j].Filename
@@ -174,12 +186,7 @@ func WriteIndex(entries []types.IndexEntry) error {
 	// 20-byte SHA-1 checksum of all previous contents
 	hash := sha1.Sum(buffer)
 	buffer = append(buffer, hash[:]...)
-
-	// Write updated index file
-	if err := os.WriteFile(filepath.Join(".git", "index"), buffer, constants.DefaultFilePerm); err != nil {
-		return err
-	}
-	return nil
+	return buffer
 }
 
 // IndexToMap converts entries to map for fast lookup

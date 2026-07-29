@@ -65,8 +65,24 @@ func WriteObject(objType types.ObjectType, content []byte) ([20]byte, error) {
 		return [20]byte{}, err
 	}
 
-	// Write to filePath
-	if err := os.WriteFile(filePath, buf.Bytes(), constants.DefaultFilePerm); err != nil {
+	// Crash-safe write: temp file in the same directory, then atomic rename.
+	// A reader can never observe a half-written object, even if the process
+	// dies mid-write.
+	tmp, err := os.CreateTemp(dir, "tmp_obj_*")
+	if err != nil {
+		return [20]byte{}, err
+	}
+	if _, err := tmp.Write(buf.Bytes()); err != nil {
+		tmp.Close()
+		os.Remove(tmp.Name())
+		return [20]byte{}, err
+	}
+	if err := tmp.Close(); err != nil {
+		os.Remove(tmp.Name())
+		return [20]byte{}, err
+	}
+	if err := os.Rename(tmp.Name(), filePath); err != nil {
+		os.Remove(tmp.Name())
 		return [20]byte{}, err
 	}
 

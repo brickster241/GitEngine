@@ -85,7 +85,7 @@ func RegisterFileAndUpdateIndex(args []string) {
 		}
 
 		// Write to Index (Will sort entries based on Filename)
-		if err := plumbing.WriteIndex(entries); err != nil {
+		if err := plumbing.WriteIndexLocked(entries); err != nil {
 			fmt.Println("Error updating Index:", err)
 			os.Exit(1)
 		}
