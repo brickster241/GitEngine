@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -11,8 +12,35 @@ import (
 	"github.com/brickster241/GitEngine/utils/types"
 )
 
-// writeCommit creates a Git commit object, writes it to the object database, and returns the commit SHA.
+// DefaultCommitDate returns "now" in Git's raw date format "<unix> <±HHMM>",
+// unless the given env var (GIT_AUTHOR_DATE / GIT_COMMITTER_DATE) pins it —
+// the same override real Git honors, which is what makes commit SHAs
+// reproducible and differentially testable against native Git.
+func DefaultCommitDate(envVar string) string {
+	if v := os.Getenv(envVar); v != "" {
+		return v
+	}
+	now := time.Now()
+	_, offset := now.Zone()
+	sign := "+"
+	if offset < 0 {
+		sign = "-"
+		offset = -offset
+	}
+	return fmt.Sprintf("%d %s%02d%02d", now.Unix(), sign, offset/3600, (offset%3600)/60)
+}
+
+// WriteCommit creates a Git commit object, writes it to the object database, and returns the commit SHA.
 func WriteCommit(treeSHA [20]byte, parentsSHA [][20]byte, author types.Author, message string) ([20]byte, error) {
+	return WriteCommitFull(treeSHA, parentsSHA, author, DefaultCommitDate("GIT_AUTHOR_DATE"),
+		author, DefaultCommitDate("GIT_COMMITTER_DATE"), message)
+}
+
+// WriteCommitFull is WriteCommit with explicit author/committer identities and
+// raw dates ("<unix> <±HHMM>"). Rebase uses it to replay commits preserving
+// the original author and author date while stamping a fresh committer.
+func WriteCommitFull(treeSHA [20]byte, parentsSHA [][20]byte, author types.Author, authorDate string,
+	committer types.Author, committerDate string, message string) ([20]byte, error) {
 	var content bytes.Buffer
 
 	// Tree Line : "tree <sha_hex>\n"
@@ -27,37 +55,10 @@ func WriteCommit(treeSHA [20]byte, parentsSHA [][20]byte, author types.Author, m
 		content.WriteByte('\n')
 	}
 
-	// Calculate sign, and timezone
-	now := time.Now()
-	timestamp := now.Unix()
-	_, offset := now.Zone()
-	sign := "+"
-	if offset < 0 {
-		sign = "-"
-		offset = -offset
-	}
-
-	tz := fmt.Sprintf("%s%02d%02d", sign, offset/3600, (offset%3600)/60)
-
 	// Author Line : "author <name> <email> <timestamp> <timezone>"
-	authorLine := fmt.Sprintf(
-		"author %s <%s> %d %s\n",
-		author.Name,
-		author.Email,
-		timestamp,
-		tz,
-	)
-	// Author Line : "committer <name> <email> <timestamp> <timezone>"
-	committerLine := fmt.Sprintf(
-		"committer %s <%s> %d %s\n",
-		author.Name,
-		author.Email,
-		timestamp,
-		tz,
-	)
-
-	content.WriteString(authorLine)
-	content.WriteString(committerLine)
+	content.WriteString(fmt.Sprintf("author %s <%s> %s\n", author.Name, author.Email, authorDate))
+	// Committer Line : "committer <name> <email> <timestamp> <timezone>"
+	content.WriteString(fmt.Sprintf("committer %s <%s> %s\n", committer.Name, committer.Email, committerDate))
 
 	// blank line before message
 	content.WriteByte('\n')
@@ -107,11 +108,17 @@ func ReadCommit(sha [20]byte) (*types.CommitNode, error) {
 			c.ParentsSHA = append(c.ParentsSHA, p)
 
 		case strings.HasPrefix(line, "author "): // Author Line
-			parts := strings.Split(line, " ")
-			emailLen := len(parts[2])
-			c.Author = types.Author{
-				Name:  parts[1],
-				Email: parts[2][1 : emailLen-1],
+			// Format: author Name Possibly With Spaces <email> <unix> <±HHMM>.
+			// Parse from the angle brackets outward so multi-word names and
+			// the raw date both survive (rebase replays depend on them).
+			lt := strings.Index(line, "<")
+			gt := strings.Index(line, ">")
+			if lt != -1 && gt != -1 && gt > lt {
+				c.Author = types.Author{
+					Name:  strings.TrimSpace(line[len("author "):lt]),
+					Email: line[lt+1 : gt],
+				}
+				c.AuthorDate = strings.TrimSpace(line[gt+1:])
 			}
 
 		case strings.HasPrefix(line, "committer "): // Committer Line

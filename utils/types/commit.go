@@ -5,6 +5,7 @@ type CommitNode struct {
 	TreeSHA    [20]byte   // root tree SHA
 	ParentsSHA [][20]byte // parents commit SHA, can be multiple for merges
 	Author     Author     // author info
+	AuthorDate string     // raw "<unix> <±HHMM>" — preserved so rebase can replay commits faithfully
 	Committer  string     // committer info
 	Message    string     // commit message
 }
