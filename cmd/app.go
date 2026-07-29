@@ -59,6 +59,18 @@ func main() {
 	case "branch":
 		// List, Create or Delete branch references.
 		porcelain.BranchOps(os.Args[1:])
+	case "merge":
+		// Join another branch's history into the current branch (fast-forward or 3-way).
+		porcelain.MergeBranch(os.Args[1:])
+	case "rebase":
+		// Replay the current branch's commits on top of another commit-ish.
+		porcelain.RebaseBranch(os.Args[1:])
+	case "log":
+		// Show commit history from HEAD, first-parent, newest first.
+		porcelain.LogCommits(os.Args[1:])
+	case "fsck":
+		// Verify object-store integrity: re-hash every object, resolve every reference.
+		porcelain.FsckObjects(os.Args[1:])
 	default:
 		// Command not found
 		fmt.Printf("gegit: '%s' is not a git command. See 'gegit help' for available commands.\n", os.Args[1])
