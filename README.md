@@ -6,11 +6,11 @@ object store, DIRC v2 index, refs/HEAD semantics, and the porcelain on top:
 `rebase` with preserved authorship, and `fsck`-grade integrity verification.
 
 **[▶ Sandbox — a repository in your browser](https://brickster241.github.io/GitEngine/)** —
-VS Code-style explorer, a command line, and the object store reacting live: `status`, `add`,
-`commit`, `log`, `branch`, `checkout`, `merge` (real merge-base walk, real two-parent merge
-commits, real conflict markers). Every SHA verifiable against native git. The
-[Merkle Cascade](https://brickster241.github.io/GitEngine/cascade.html) view focuses on the
-hash-ripple story alone.
+one page, the whole model: VS Code-style explorer (drop real files in), a command line, and
+the object store reacting live. `status`, `add`, `commit`, `log`, `branch`, `checkout`,
+`merge` — real merge-base walk, real two-parent merge commits, real conflict markers, and
+every SHA verifiable against native git. Edit a deep file and watch the hash ripple climb
+the tree while unchanged subtrees stay dim: shared, not copied.
 
 ![The sandbox flying itself: commits, a branch, divergence, and a merge — graphs updating live](assets/playground.gif)
 
