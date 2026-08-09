@@ -396,6 +396,30 @@ $('renBtn').onclick = () => {
 $('content').value = files.get(selected)
 await rebuild()
 selectNode('')   // root tree
+
+// ---------- auto-demo: the cascade performs until the visitor takes over ----------
+let demoOn = true, demoTick = 0
+const DEMO = [
+  () => { files.set('src/util/helper.go', files.get('src/util/helper.go') + '// tick ' + demoTick + '\n') },
+  () => { files.set('README.md', '# demo\nEdit me and watch the DAG. (' + demoTick + ')\n') },
+  () => {
+    const from = files.has('docs/notes.md') ? 'docs/notes.md' : 'docs/journal.md'
+    const to = from === 'docs/notes.md' ? 'docs/journal.md' : 'docs/notes.md'
+    const c = files.get(from); files.delete(from); files.set(to, c)
+    if (selected === from) selected = to
+  },
+  () => { files.set('src/main.go', 'package main\n\nfunc main() {\n\tprintln("hello ' + demoTick + '")\n}\n') },
+]
+const demoTimer = setInterval(() => {
+  if (!demoOn) return
+  DEMO[demoTick % DEMO.length]()
+  demoTick++
+  if (files.has(selected)) $('content').value = files.get(selected)
+  rebuild()
+}, 4200)
+for (const ev of ['pointerdown', 'keydown']) {
+  window.addEventListener(ev, () => { demoOn = false; clearInterval(demoTimer) }, { once: true, capture: true })
+}
 </script>
 </body>
 </html>
