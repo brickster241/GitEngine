@@ -5,11 +5,14 @@ object store, DIRC v2 index, refs/HEAD semantics, and the porcelain on top:
 **17 commands** including three-way `merge` with real conflict detection,
 `rebase` with preserved authorship, and `fsck`-grade integrity verification.
 
-**[▶ Merkle Cascade — live playground](https://brickster241.github.io/GitEngine/)** —
-edit a virtual worktree and watch real git hashes ripple to the root. Every SHA on the
-page is verifiable against native git.
+**[▶ Sandbox — a repository in your browser](https://brickster241.github.io/GitEngine/)** —
+VS Code-style explorer, a command line, and the object store reacting live: `status`, `add`,
+`commit`, `log`, `branch`, `checkout`, `merge` (real merge-base walk, real two-parent merge
+commits, real conflict markers). Every SHA verifiable against native git. The
+[Merkle Cascade](https://brickster241.github.io/GitEngine/cascade.html) view focuses on the
+hash-ripple story alone.
 
-![Editing a file cascades new hashes up the object DAG while unchanged subtrees keep theirs](assets/playground.gif)
+![The sandbox flying itself: commits, a branch, divergence, and a merge — graphs updating live](assets/playground.gif)
 
 <details>
 <summary><b>Terminal proof</b> — native git reading GitEngine's object store</summary>
