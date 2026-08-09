@@ -5,6 +5,20 @@ object store, DIRC v2 index, refs/HEAD semantics, and the porcelain on top:
 **17 commands** including three-way `merge` with real conflict detection,
 `rebase` with preserved authorship, and `fsck`-grade integrity verification.
 
+**[▶ Merkle Cascade — live playground](https://brickster241.github.io/GitEngine/)** —
+edit a virtual worktree and watch real git hashes ripple to the root. Every SHA on the
+page is verifiable against native git.
+
+![Editing a file cascades new hashes up the object DAG while unchanged subtrees keep theirs](assets/playground.gif)
+
+<details>
+<summary><b>Terminal proof</b> — native git reading GitEngine's object store</summary>
+<br>
+
+![ge and git agree on every hash, and git log reads a commit ge wrote](assets/interop.gif)
+
+</details>
+
 The acceptance criterion is not "looks right" — it is **byte-for-byte agreement
 with native Git**, enforced by a differential test suite that executes every
 scenario twice (once with `git`, once with `gegit`) under pinned identities and
