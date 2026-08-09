@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GitEngine · Merkle Cascade</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%237dd3fc' stroke-width='3'/%3E%3Ccircle cx='16' cy='16' r='5' fill='%237dd3fc'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg:#0b0f14; --panel:#11151d; --panel2:#161c26; --line:#232b38; --grid:#121826;
+    --ink:#e6edf3; --dim:#8b98a9; --faint:#5b6675;
+    --amber:#ffb454; --hud:#7dd3fc; --ok:#4ade80; --err:#f87171; --purple:#c4b5fd;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,'Liberation Mono',monospace;
+    --sans:-apple-system,'Segoe UI',system-ui,Helvetica,Arial,sans-serif;
+  }
+  * { box-sizing:border-box; margin:0; }
+  body {
+    background:var(--bg);
+    background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+    background-size:28px 28px;
+    color:var(--ink); font-family:var(--mono); min-height:100vh; padding:20px clamp(12px,3vw,36px) 50px;
+  }
+  header { display:flex; flex-wrap:wrap; align-items:baseline; gap:12px 20px; border-bottom:1.5px solid var(--line); padding-bottom:14px; }
+  header h1 { font-family:var(--sans); font-size:22px; font-weight:800; }
+  header h1 b { color:var(--hud); }
+  .placard { font-size:10px; letter-spacing:2.5px; color:var(--faint); text-transform:uppercase; }
+  header .right { margin-left:auto; font-size:11px; }
+  header a { color:var(--hud); text-decoration:none; }
+  header a:hover { text-decoration:underline; }
+
+  main { display:grid; grid-template-columns:minmax(250px,4fr) minmax(380px,9fr) minmax(250px,5fr); gap:14px; margin-top:16px; }
+  @media (max-width:1020px){ main { grid-template-columns:1fr; } }
+  .panel { background:color-mix(in srgb,var(--panel) 90%,transparent); border:1.5px solid var(--line); border-radius:12px; padding:14px; min-width:0; }
+  .panel h2 { font-size:10px; letter-spacing:2.5px; color:var(--faint); text-transform:uppercase; margin-bottom:10px; display:flex; gap:8px; align-items:center; }
+  .panel h2 .stat { margin-left:auto; letter-spacing:0; color:var(--dim); text-transform:none; }
+
+  #files { display:flex; flex-direction:column; gap:4px; }
+  .file { display:flex; align-items:center; gap:8px; padding:5px 8px; border:1px solid transparent; border-radius:6px; cursor:pointer; font-size:12px; color:var(--dim); }
+  .file:hover { background:var(--panel2); color:var(--ink); }
+  .file.sel { border-color:var(--hud); color:var(--ink); background:var(--panel2); }
+  .file .x { margin-left:auto; color:var(--faint); font-size:11px; padding:0 4px; border-radius:4px; }
+  .file .x:hover { color:var(--err); }
+  textarea {
+    width:100%; height:120px; resize:vertical; background:var(--bg); color:var(--ink);
+    border:1.5px solid var(--line); border-radius:8px; padding:9px; font:12px/1.5 var(--mono); margin-top:10px;
+  }
+  textarea:focus { outline:none; border-color:var(--hud); }
+  .row { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
+  .row button, .row input {
+    background:var(--panel2); color:var(--dim); border:1px solid var(--line); border-radius:6px;
+    font:10.5px var(--mono); letter-spacing:1px; padding:5px 9px;
+  }
+  .row button { cursor:pointer; }
+  .row button:hover { color:var(--ink); border-color:var(--hud); }
+  .row input { flex:1; min-width:120px; letter-spacing:0; }
+  .row input:focus { outline:none; border-color:var(--hud); color:var(--ink); }
+
+  #dagWrap { overflow-x:auto; }
+  #dag { display:block; margin:0 auto; }
+  .nodebox { cursor:pointer; }
+  .nodebox rect { fill:var(--bg); stroke:var(--line); stroke-width:1.5; transition:stroke .3s; }
+  .nodebox.sel rect { stroke:var(--hud); }
+  .nodebox.hot rect { stroke:var(--amber); filter:drop-shadow(0 0 7px rgba(255,180,84,.55)); }
+  .nodebox text { user-select:none; }
+  .edgeline { stroke:var(--line); stroke-width:1.5; fill:none; transition:stroke .3s; }
+  .edgeline.hot { stroke:var(--amber); }
+  #legend { display:flex; gap:16px; margin-top:8px; font-size:10px; color:var(--faint); letter-spacing:1px; flex-wrap:wrap; justify-content:center; }
+  #legend i { display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:5px; vertical-align:-1px; }
+
+  #inspector { font-size:11.5px; }
+  #inspector .otype { font-size:20px; font-family:var(--sans); font-weight:800; }
+  #inspector .sha { color:var(--dim); word-break:break-all; font-size:10.5px; margin-top:3px; }
+  #bytes { background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:9px; margin-top:10px; max-height:230px; overflow:auto; white-space:pre; font-size:10.5px; line-height:1.7; color:var(--dim); }
+  #bytes b { color:var(--ink); font-weight:400; }
+  #bytes .m { color:var(--amber); } #bytes .n { color:var(--ok); } #bytes .h { color:var(--hud); }
+  #verify { margin-top:10px; background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:9px; font-size:10.5px; color:var(--dim); word-break:break-all; }
+  #verify b { color:var(--ok); font-weight:400; }
+  .note { font-size:10.5px; color:var(--faint); margin-top:10px; line-height:1.6; }
+  #cascadeLog { margin-top:10px; font-size:10.5px; color:var(--dim); min-height:30px; line-height:1.8; }
+  #cascadeLog .amber { color:var(--amber); }
+  #cascadeLog .okc { color:var(--ok); }
+  footer { margin-top:26px; border-top:1px solid var(--line); padding-top:12px; font-size:10.5px; color:var(--faint); letter-spacing:1px; text-align:center; line-height:1.9; }
+  footer a { color:var(--dim); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>GITENGINE <b>MERKLE CASCADE</b></h1>
+  <span class="placard">edit a file · watch the hashes ripple to the root</span>
+  <span class="right"><a href="https://github.com/brickster241/GitEngine" target="_blank" rel="noreferrer">source ↗</a></span>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>Worktree <span class="stat" id="wtStat"></span></h2>
+    <div id="files"></div>
+    <div class="row"><input id="newPath" placeholder="new/file/path.txt" aria-label="new file path"><button id="addBtn">ADD</button></div>
+    <textarea id="content" spellcheck="false" aria-label="file content"></textarea>
+    <div class="row"><input id="renamePath" placeholder="rename selected to…" aria-label="rename path"><button id="renBtn">RENAME</button></div>
+    <div id="cascadeLog"></div>
+    <p class="note">Renaming one deep file changes a <em>chain</em> of tree SHAs up to the root —
+    while every unchanged subtree keeps its hash, <b>shared, not copied</b>. That is the whole
+    trick that makes Git cheap.</p>
+  </section>
+
+  <section class="panel">
+    <h2>Object DAG <span class="stat" id="dagStat"></span></h2>
+    <div id="dagWrap"><svg id="dag"></svg></div>
+    <div id="legend">
+      <span><i style="background:var(--purple)"></i>COMMIT</span>
+      <span><i style="background:var(--hud)"></i>TREE</span>
+      <span><i style="background:var(--ok)"></i>BLOB</span>
+      <span><i style="background:var(--amber)"></i>REHASHED BY LAST EDIT</span>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Object inspector</h2>
+    <div id="inspector">
+      <div class="otype" id="iType">—</div>
+      <div class="sha" id="iSha"></div>
+      <div id="bytes">click a node</div>
+      <div id="verify" hidden></div>
+    </div>
+    <p class="note" id="parity">Every hash on this page is a <b>real git hash</b> — the same
+    <code>sha1("blob &lt;n&gt;\0" + content)</code> scheme GitEngine implements with proven
+    byte-for-byte parity against native git. Paste the verify command into any terminal.</p>
+  </section>
+</main>
+
+<footer>
+  THE ALGORITHM IS THE EXHIBIT · CONTENT ADDRESSING, TREE SORT ORDER (<code>name/</code>), UNPADDED MODES —
+  AS BUILT IN <a href="https://github.com/brickster241/GitEngine" target="_blank" rel="noreferrer">GITENGINE</a>
+  AND PROVEN AGAINST NATIVE GIT BY ITS DIFFERENTIAL SUITE
+</footer>
+
+<script type="module">
+const $ = (id) => document.getElementById(id)
+const enc = new TextEncoder()
+
+// ---------- real git hashing ----------
+async function sha1(bytes) {
+  const d = await crypto.subtle.digest('SHA-1', bytes)
+  return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, '0')).join('')
+}
+function cat(...arrs) {
+  const n = arrs.reduce((s, a) => s + a.length, 0)
+  const out = new Uint8Array(n)
+  let o = 0
+  for (const a of arrs) { out.set(a, o); o += a.length }
+  return out
+}
+const hexToBytes = (hex) => new Uint8Array(hex.match(/../g).map((h) => parseInt(h, 16)))
+
+async function hashBlob(text) {
+  const body = enc.encode(text)
+  const full = cat(enc.encode(`blob ${body.length}\0`), body)
+  return { sha: await sha1(full), size: body.length, body: full }
+}
+/**
+ * Git tree serialization, the part with the two famous traps:
+ *  - entries sort by name WITH a trailing '/' appended to directories
+ *  - modes are unpadded: 40000 for trees, never 040000
+ */
+async function hashTree(entries) {
+  const sorted = [...entries].sort((a, b) => {
+    const ka = a.type === 'tree' ? a.name + '/' : a.name
+    const kb = b.type === 'tree' ? b.name + '/' : b.name
+    return ka < kb ? -1 : ka > kb ? 1 : 0
+  })
+  let payload = new Uint8Array(0)
+  for (const e of sorted) {
+    const mode = e.type === 'tree' ? '40000' : '100644'
+    payload = cat(payload, enc.encode(`${mode} ${e.name}\0`), hexToBytes(e.sha))
+  }
+  const full = cat(enc.encode(`tree ${payload.length}\0`), payload)
+  return { sha: await sha1(full), size: payload.length, body: full, sorted }
+}
+async function hashCommit(treeSha, message) {
+  // Fixed identity + timestamp: determinism is a feature in an exhibit.
+  const txt = `tree ${treeSha}\nauthor Ground Control <gc@merkle.cascade> 1700000000 +0000\ncommitter Ground Control <gc@merkle.cascade> 1700000000 +0000\n\n${message}\n`
+  const body = enc.encode(txt)
+  const full = cat(enc.encode(`commit ${body.length}\0`), body)
+  return { sha: await sha1(full), size: body.length, txt }
+}
+
+// ---------- worktree state ----------
+let files = new Map([
+  ['README.md', '# demo\nEdit me and watch the DAG.\n'],
+  ['src/main.go', 'package main\n\nfunc main() {\n\tprintln("hello")\n}\n'],
+  ['src/util/helper.go', 'package util\n\nfunc Help() int { return 42 }\n'],
+  ['docs/notes.md', 'renaming me rewrites two trees\n'],
+])
+let selected = 'README.md'
+let selectedNode = null
+let prevShas = new Map()   // node key -> sha before the last edit
+let model = null           // built DAG
+
+// ---------- build the DAG model ----------
+async function build() {
+  // nested structure from paths
+  const root = { type: 'tree', name: '(root)', path: '', children: new Map() }
+  for (const [path, content] of files) {
+    const parts = path.split('/')
+    let cur = root
+    for (let i = 0; i < parts.length - 1; i++) {
+      if (!cur.children.has(parts[i]))
+        cur.children.set(parts[i], { type: 'tree', name: parts[i], path: parts.slice(0, i + 1).join('/'), children: new Map() })
+      cur = cur.children.get(parts[i])
+    }
+    cur.children.set(parts.at(-1), { type: 'blob', name: parts.at(-1), path, content })
+  }
+  // hash bottom-up
+  const nodes = []
+  async function walk(node, depth) {
+    node.depth = depth
+    if (node.type === 'blob') {
+      const h = await hashBlob(node.content)
+      Object.assign(node, h)
+    } else {
+      const kids = [...node.children.values()]
+      for (const k of kids) await walk(k, depth + 1)
+      const h = await hashTree(kids.map((k) => ({ type: k.type, name: k.name, sha: k.sha })))
+      Object.assign(node, h)
+      node.kids = kids
+    }
+    nodes.push(node)
+    return node
+  }
+  await walk(root, 1)
+  const commit = { type: 'commit', name: 'HEAD', path: '(commit)', depth: 0, kids: [root] }
+  Object.assign(commit, await hashCommit(root.sha, 'edit via merkle cascade'))
+  nodes.push(commit)
+  return { commit, root, nodes }
+}
+
+// ---------- layout + render ----------
+const NW = 118, NH = 44, VGAP = 66
+function layout(m) {
+  // leaves get x slots in worktree order; internal nodes center over children
+  let next = 0
+  function place(n) {
+    if (n.type === 'blob' || !n.kids?.length) { n.x = next++; return n.x }
+    const xs = n.kids.map(place)
+    n.x = xs.reduce((a, b) => a + b, 0) / xs.length
+    return n.x
+  }
+  place(m.commit)
+  const maxDepth = Math.max(...m.nodes.map((n) => n.depth))
+  const cols = next
+  const W = Math.max(cols * (NW + 18) + 20, 460)
+  const H = (maxDepth + 1) * (NH + VGAP) - VGAP + 24
+  for (const n of m.nodes) {
+    n.px = 10 + n.x * (NW + 18) + NW / 2
+    n.py = 12 + n.depth * (NH + VGAP) + NH / 2
+  }
+  return { W, H }
+}
+
+const COLOR = { commit: 'var(--purple)', tree: 'var(--hud)', blob: 'var(--ok)' }
+function render(changed) {
+  const m = model
+  const { W, H } = layout(m)
+  const svg = $('dag')
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`)
+  svg.setAttribute('width', W); svg.setAttribute('height', H)
+  const parts = []
+  for (const n of m.nodes) if (n.kids) for (const k of n.kids) {
+    parts.push(`<path class="edgeline" data-to="${k.path}" d="M${n.px} ${n.py + NH / 2 - 6} C ${n.px} ${n.py + VGAP / 2}, ${k.px} ${k.py - VGAP / 2}, ${k.px} ${k.py - NH / 2 + 6}"/>`)
+  }
+  for (const n of m.nodes) {
+    const c = COLOR[n.type]
+    parts.push(`<g class="nodebox" data-path="${n.path}" transform="translate(${n.px - NW / 2},${n.py - NH / 2})">
+      <rect width="${NW}" height="${NH}" rx="9"/>
+      <circle cx="13" cy="13" r="3.5" fill="${c}"/>
+      <text x="24" y="17" font-size="10.5" fill="var(--ink)">${n.name.length > 12 ? n.name.slice(0, 11) + '…' : n.name}</text>
+      <text x="13" y="34" font-size="10" fill="${c}" style="font-family:var(--mono)">${n.sha.slice(0, 8)}</text>
+    </g>`)
+  }
+  svg.innerHTML = parts.join('')
+  svg.querySelectorAll('.nodebox').forEach((g) => {
+    g.addEventListener('click', () => selectNode(g.dataset.path))
+  })
+  $('dagStat').textContent = `${m.nodes.length} objects`
+  $('wtStat').textContent = `${files.size} files`
+
+  // cascade animation: light changed nodes bottom-up with stagger
+  if (changed?.size) {
+    const hot = m.nodes.filter((n) => changed.has(n.path))
+    hot.sort((a, b) => b.depth - a.depth)
+    hot.forEach((n, i) => {
+      setTimeout(() => {
+        svg.querySelector(`.nodebox[data-path="${CSS.escape(n.path)}"]`)?.classList.add('hot')
+        svg.querySelector(`.edgeline[data-to="${CSS.escape(n.path)}"]`)?.classList.add('hot')
+      }, 160 * i)
+    })
+    setTimeout(() => {
+      svg.querySelectorAll('.hot').forEach((el) => el.classList.remove('hot'))
+    }, 160 * hot.length + 1600)
+    const reused = m.nodes.length - hot.length
+    $('cascadeLog').innerHTML =
+      `<span class="amber">${hot.length} object${hot.length > 1 ? 's' : ''} rehashed</span> · ` +
+      `<span class="okc">${reused} reused unchanged</span><br>` +
+      hot.map((n) => `${'&nbsp;'.repeat(2)}${n.type} ${n.name} → ${n.sha.slice(0, 8)}`).join('<br>')
+  }
+  if (selectedNode) selectNode(selectedNode, true)
+}
+
+// ---------- inspector ----------
+function fmtTree(n) {
+  return n.sorted.map((e) =>
+    `<span class="m">${e.type === 'tree' ? '40000' : '100644'}</span> <span class="n">${e.name}</span>\\0<span class="h">${e.sha}</span>`
+  ).join('\n')
+}
+function selectNode(path, keep) {
+  selectedNode = path
+  const n = model.nodes.find((x) => x.path === path)
+  if (!n) return
+  document.querySelectorAll('.nodebox').forEach((g) => g.classList.toggle('sel', g.dataset.path === path))
+  $('iType').textContent = n.type.toUpperCase() + (n.name !== '(root)' ? ` · ${n.name}` : ' · root')
+  $('iSha').textContent = n.sha
+  if (n.type === 'blob') {
+    $('bytes').innerHTML = `<b>blob ${n.size}\\0</b>${escapeHtml(n.content)}`
+    $('verify').hidden = false
+    $('verify').innerHTML = `verify in any repo:<br><b>printf '%s' ${shellq(n.content)} | git hash-object --stdin</b><br>→ ${n.sha}`
+  } else if (n.type === 'tree') {
+    $('bytes').innerHTML = `<b>tree ${n.size}\\0</b>\n${fmtTree(n)}\n\n<i style="color:var(--faint)">entries sort with '/' appended to dir names;\nmodes are unpadded — the two traps GitEngine's\ndifferential suite caught.</i>`
+    $('verify').hidden = true
+  } else {
+    $('bytes').innerHTML = `<b>commit ${n.size}\\0</b>${escapeHtml(n.txt)}`
+    $('verify').hidden = true
+  }
+}
+function shellq(s) { return `'${s.replace(/'/g, `'\\''`)}'` }
+function escapeHtml(s) { return s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])) }
+
+// ---------- file list UI ----------
+function renderFiles() {
+  const frag = document.createDocumentFragment()
+  for (const path of [...files.keys()].sort()) {
+    const d = document.createElement('div')
+    d.className = 'file' + (path === selected ? ' sel' : '')
+    d.innerHTML = `<span>${path}</span><span class="x" title="delete">✕</span>`
+    d.querySelector('span').onclick = () => { selected = path; $('content').value = files.get(path); renderFiles() }
+    d.querySelector('.x').onclick = (e) => {
+      e.stopPropagation()
+      if (files.size === 1) return
+      files.delete(path)
+      if (selected === path) { selected = [...files.keys()][0]; $('content').value = files.get(selected) }
+      rebuild()
+    }
+    frag.appendChild(d)
+  }
+  $('files').replaceChildren(frag)
+}
+
+// ---------- rebuild + diff ----------
+let debounce = null
+async function rebuild() {
+  model = await build()
+  const changed = new Set()
+  for (const n of model.nodes) {
+    if (prevShas.size && prevShas.get(n.path) !== n.sha) changed.add(n.path)
+  }
+  prevShas = new Map(model.nodes.map((n) => [n.path, n.sha]))
+  renderFiles()
+  render(changed)
+}
+
+$('content').addEventListener('input', () => {
+  files.set(selected, $('content').value)
+  clearTimeout(debounce)
+  debounce = setTimeout(rebuild, 300)
+})
+$('addBtn').onclick = () => {
+  const p = $('newPath').value.trim().replace(/^\/+|\/+$/g, '')
+  if (!p || files.has(p)) return
+  files.set(p, 'new file\n')
+  selected = p
+  $('content').value = files.get(p)
+  $('newPath').value = ''
+  rebuild()
+}
+$('renBtn').onclick = () => {
+  const p = $('renamePath').value.trim().replace(/^\/+|\/+$/g, '')
+  if (!p || files.has(p) || !files.has(selected)) return
+  const content = files.get(selected)
+  files.delete(selected)
+  files.set(p, content)
+  selected = p
+  $('renamePath').value = ''
+  rebuild()
+}
+
+$('content').value = files.get(selected)
+await rebuild()
+selectNode('')   // root tree
+</script>
+</body>
+</html>
