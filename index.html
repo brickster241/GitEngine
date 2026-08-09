@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>GitEngine · Merkle Cascade</title>
+<title>GitEngine · Sandbox</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%237dd3fc' stroke-width='3'/%3E%3Ccircle cx='16' cy='16' r='5' fill='%237dd3fc'/%3E%3C/svg%3E">
 <style>
   :root {
@@ -18,408 +18,631 @@
     background:var(--bg);
     background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
     background-size:28px 28px;
-    color:var(--ink); font-family:var(--mono); min-height:100vh; padding:20px clamp(12px,3vw,36px) 50px;
+    color:var(--ink); font-family:var(--mono); height:100vh; display:flex; flex-direction:column; overflow:hidden;
   }
-  header { display:flex; flex-wrap:wrap; align-items:baseline; gap:12px 20px; border-bottom:1.5px solid var(--line); padding-bottom:14px; }
-  header h1 { font-family:var(--sans); font-size:22px; font-weight:800; }
+  header { display:flex; flex-wrap:wrap; align-items:baseline; gap:10px 18px; border-bottom:1.5px solid var(--line); padding:14px clamp(12px,2vw,28px) 12px; }
+  header h1 { font-family:var(--sans); font-size:19px; font-weight:800; }
   header h1 b { color:var(--hud); }
   .placard { font-size:10px; letter-spacing:2.5px; color:var(--faint); text-transform:uppercase; }
   header .right { margin-left:auto; font-size:11px; }
   header a { color:var(--hud); text-decoration:none; }
-  header a:hover { text-decoration:underline; }
 
-  main { display:grid; grid-template-columns:minmax(250px,4fr) minmax(380px,9fr) minmax(250px,5fr); gap:14px; margin-top:16px; }
-  @media (max-width:1020px){ main { grid-template-columns:1fr; } }
-  .panel { background:color-mix(in srgb,var(--panel) 90%,transparent); border:1.5px solid var(--line); border-radius:12px; padding:14px; min-width:0; }
-  .panel h2 { font-size:10px; letter-spacing:2.5px; color:var(--faint); text-transform:uppercase; margin-bottom:10px; display:flex; gap:8px; align-items:center; }
-  .panel h2 .stat { margin-left:auto; letter-spacing:0; color:var(--dim); text-transform:none; }
+  main { flex:1; display:grid; grid-template-columns:250px minmax(340px,1fr) 380px; gap:0; min-height:0; }
+  @media (max-width:1000px){ main { grid-template-columns:1fr; grid-template-rows:auto auto auto; overflow-y:auto; } body { overflow:auto; height:auto; } }
+  .col { border-right:1.5px solid var(--line); display:flex; flex-direction:column; min-height:0; min-width:0; }
+  .col:last-child { border-right:none; }
+  .sect { padding:10px 12px; border-bottom:1.5px solid var(--line); }
+  .sect h2 { font-size:9.5px; letter-spacing:2.5px; color:var(--faint); text-transform:uppercase; margin-bottom:8px; display:flex; align-items:center; }
+  .sect h2 .stat { margin-left:auto; letter-spacing:0; color:var(--dim); text-transform:none; }
+  .grow { flex:1; overflow:auto; min-height:0; }
 
-  #files { display:flex; flex-direction:column; gap:4px; }
-  .file { display:flex; align-items:center; gap:8px; padding:5px 8px; border:1px solid transparent; border-radius:6px; cursor:pointer; font-size:12px; color:var(--dim); }
-  .file:hover { background:var(--panel2); color:var(--ink); }
-  .file.sel { border-color:var(--hud); color:var(--ink); background:var(--panel2); }
-  .file .x { margin-left:auto; color:var(--faint); font-size:11px; padding:0 4px; border-radius:4px; }
-  .file .x:hover { color:var(--err); }
+  /* explorer */
+  #tree { font-size:12px; }
+  .entry { display:flex; align-items:center; gap:6px; padding:3px 6px 3px calc(6px + var(--ind,0)*14px); border-radius:5px; cursor:pointer; color:var(--dim); }
+  .entry:hover { background:var(--panel2); color:var(--ink); }
+  .entry.sel { background:var(--panel2); color:var(--ink); box-shadow:inset 2px 0 0 var(--hud); }
+  .entry .ico { width:12px; text-align:center; color:var(--faint); }
+  .entry .st { margin-left:auto; font-size:9px; letter-spacing:1px; }
+  .st.M { color:var(--amber); } .st.A { color:var(--ok); } .st.S { color:var(--hud); }
   textarea {
-    width:100%; height:120px; resize:vertical; background:var(--bg); color:var(--ink);
-    border:1.5px solid var(--line); border-radius:8px; padding:9px; font:12px/1.5 var(--mono); margin-top:10px;
+    width:100%; height:150px; resize:vertical; background:var(--bg); color:var(--ink);
+    border:1.5px solid var(--line); border-radius:8px; padding:8px; font:12px/1.5 var(--mono);
   }
   textarea:focus { outline:none; border-color:var(--hud); }
-  .row { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
-  .row button, .row input {
+  .row { display:flex; gap:6px; margin-top:7px; }
+  .row input { flex:1; min-width:0; background:var(--panel2); color:var(--ink); border:1px solid var(--line); border-radius:6px; font:10.5px var(--mono); padding:5px 8px; }
+  .row button, .cmdbtns button {
     background:var(--panel2); color:var(--dim); border:1px solid var(--line); border-radius:6px;
-    font:10.5px var(--mono); letter-spacing:1px; padding:5px 9px;
+    font:10.5px var(--mono); letter-spacing:1px; padding:5px 9px; cursor:pointer; white-space:nowrap;
   }
-  .row button { cursor:pointer; }
-  .row button:hover { color:var(--ink); border-color:var(--hud); }
-  .row input { flex:1; min-width:120px; letter-spacing:0; }
-  .row input:focus { outline:none; border-color:var(--hud); color:var(--ink); }
+  .row button:hover, .cmdbtns button:hover { color:var(--ink); border-color:var(--hud); }
 
-  #dagWrap { overflow-x:auto; }
-  #dag { display:block; margin:0 auto; }
+  /* graph */
+  #graphWrap { flex:1; overflow:auto; min-height:170px; }
+  #graph { display:block; }
+  .cnode { cursor:pointer; }
+  .cnode circle { fill:var(--bg); stroke:var(--purple); stroke-width:2; }
+  .cnode.head circle { stroke:var(--amber); filter:drop-shadow(0 0 6px rgba(255,180,84,.5)); }
+  .cnode text { fill:var(--dim); font-size:10px; }
+  .cedge { stroke:var(--line); stroke-width:1.6; fill:none; }
+  .reftag { font-size:9.5px; letter-spacing:1px; }
+  #dagWrap { overflow:auto; max-height:300px; }
   .nodebox { cursor:pointer; }
   .nodebox rect { fill:var(--bg); stroke:var(--line); stroke-width:1.5; transition:stroke .3s; }
-  .nodebox.sel rect { stroke:var(--hud); }
   .nodebox.hot rect { stroke:var(--amber); filter:drop-shadow(0 0 7px rgba(255,180,84,.55)); }
-  .nodebox text { user-select:none; }
-  .edgeline { stroke:var(--line); stroke-width:1.5; fill:none; transition:stroke .3s; }
+  .nodebox.sel rect { stroke:var(--hud); }
+  .edgeline { stroke:var(--line); stroke-width:1.4; fill:none; transition:stroke .3s; }
   .edgeline.hot { stroke:var(--amber); }
-  #legend { display:flex; gap:16px; margin-top:8px; font-size:10px; color:var(--faint); letter-spacing:1px; flex-wrap:wrap; justify-content:center; }
-  #legend i { display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:5px; vertical-align:-1px; }
 
-  #inspector { font-size:11.5px; }
-  #inspector .otype { font-size:20px; font-family:var(--sans); font-weight:800; }
-  #inspector .sha { color:var(--dim); word-break:break-all; font-size:10.5px; margin-top:3px; }
-  #bytes { background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:9px; margin-top:10px; max-height:230px; overflow:auto; white-space:pre; font-size:10.5px; line-height:1.7; color:var(--dim); }
-  #bytes b { color:var(--ink); font-weight:400; }
-  #bytes .m { color:var(--amber); } #bytes .n { color:var(--ok); } #bytes .h { color:var(--hud); }
-  #verify { margin-top:10px; background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:9px; font-size:10.5px; color:var(--dim); word-break:break-all; }
-  #verify b { color:var(--ok); font-weight:400; }
-  .note { font-size:10.5px; color:var(--faint); margin-top:10px; line-height:1.6; }
-  #cascadeLog { margin-top:10px; font-size:10.5px; color:var(--dim); min-height:30px; line-height:1.8; }
-  #cascadeLog .amber { color:var(--amber); }
-  #cascadeLog .okc { color:var(--ok); }
-  footer { margin-top:26px; border-top:1px solid var(--line); padding-top:12px; font-size:10.5px; color:var(--faint); letter-spacing:1px; text-align:center; line-height:1.9; }
+  /* terminal */
+  #term { flex:1; overflow:auto; padding:10px 12px; font-size:11.5px; line-height:1.75; min-height:140px; }
+  #term .in { color:var(--ink); }
+  #term .in::before { content:'▸ '; color:var(--amber); }
+  #term .out { color:var(--dim); white-space:pre-wrap; }
+  #term .err { color:var(--err); white-space:pre-wrap; }
+  #cmdRow { display:flex; gap:0; border-top:1.5px solid var(--line); }
+  #cmdRow span { padding:9px 0 9px 12px; color:var(--amber); font-size:12px; }
+  #cmd { flex:1; background:transparent; border:none; color:var(--ink); font:12px var(--mono); padding:9px 12px 9px 6px; }
+  #cmd:focus { outline:none; }
+  .cmdbtns { display:flex; flex-wrap:wrap; gap:5px; padding:8px 12px; border-top:1.5px solid var(--line); }
+  #inspector { font-size:11px; max-height:210px; overflow:auto; }
+  #inspector pre { background:var(--bg); border:1px solid var(--line); border-radius:7px; padding:8px; white-space:pre-wrap; word-break:break-all; color:var(--dim); margin-top:6px; font-size:10.5px; line-height:1.6; }
+  #inspector b { color:var(--ink); font-weight:400; }
+  #branchbar { display:flex; gap:8px; align-items:center; padding:7px 12px; border-top:1.5px solid var(--line); font-size:10.5px; color:var(--dim); }
+  #branchbar .b { color:var(--amber); }
+  footer { border-top:1.5px solid var(--line); padding:8px; font-size:9.5px; color:var(--faint); letter-spacing:1px; text-align:center; }
   footer a { color:var(--dim); }
 </style>
 </head>
 <body>
 
 <header>
-  <h1>GITENGINE <b>MERKLE CASCADE</b></h1>
-  <span class="placard">edit a file · watch the hashes ripple to the root</span>
-  <span class="right"><a href="https://github.com/brickster241/GitEngine" target="_blank" rel="noreferrer">source ↗</a></span>
+  <h1>GITENGINE <b>SANDBOX</b></h1>
+  <span class="placard">a real repository, in memory — every SHA verifiable against native git</span>
+  <span class="right"><a href="cascade.html">merkle cascade ↗</a> · <a href="https://github.com/brickster241/GitEngine" target="_blank" rel="noreferrer">source ↗</a></span>
 </header>
 
 <main>
-  <section class="panel">
-    <h2>Worktree <span class="stat" id="wtStat"></span></h2>
-    <div id="files"></div>
-    <div class="row"><input id="newPath" placeholder="new/file/path.txt" aria-label="new file path"><button id="addBtn">ADD</button></div>
-    <textarea id="content" spellcheck="false" aria-label="file content"></textarea>
-    <div class="row"><input id="renamePath" placeholder="rename selected to…" aria-label="rename path"><button id="renBtn">RENAME</button></div>
-    <div id="cascadeLog"></div>
-    <p class="note">Renaming one deep file changes a <em>chain</em> of tree SHAs up to the root —
-    while every unchanged subtree keeps its hash, <b>shared, not copied</b>. That is the whole
-    trick that makes Git cheap.</p>
-  </section>
-
-  <section class="panel">
-    <h2>Object DAG <span class="stat" id="dagStat"></span></h2>
-    <div id="dagWrap"><svg id="dag"></svg></div>
-    <div id="legend">
-      <span><i style="background:var(--purple)"></i>COMMIT</span>
-      <span><i style="background:var(--hud)"></i>TREE</span>
-      <span><i style="background:var(--ok)"></i>BLOB</span>
-      <span><i style="background:var(--amber)"></i>REHASHED BY LAST EDIT</span>
+  <!-- explorer + editor -->
+  <div class="col">
+    <div class="sect" style="border-bottom:none; display:flex; flex-direction:column; min-height:0; flex:1">
+      <h2>Explorer <span class="stat" id="wtStat"></span></h2>
+      <div class="grow" id="tree"></div>
+      <div class="row"><input id="newPath" placeholder="new/file.txt"><button id="addFileBtn">NEW</button></div>
+      <textarea id="editor" spellcheck="false" aria-label="file content" placeholder="select a file"></textarea>
+      <div class="row" style="font-size:9.5px; color:var(--faint); letter-spacing:1px; margin-top:5px">
+        <span>M modified · A staged · S in sync — edits are instant; <b style="color:var(--dim)">add</b> stages, <b style="color:var(--dim)">commit</b> seals</span>
+      </div>
     </div>
-  </section>
+  </div>
 
-  <section class="panel">
-    <h2>Object inspector</h2>
-    <div id="inspector">
-      <div class="otype" id="iType">—</div>
-      <div class="sha" id="iSha"></div>
-      <div id="bytes">click a node</div>
-      <div id="verify" hidden></div>
+  <!-- graphs -->
+  <div class="col">
+    <div class="sect" style="flex:1; display:flex; flex-direction:column; min-height:220px">
+      <h2>Commit graph <span class="stat" id="logStat"></span></h2>
+      <div id="graphWrap"><svg id="graph"></svg></div>
     </div>
-    <p class="note" id="parity">Every hash on this page is a <b>real git hash</b> — the same
-    <code>sha1("blob &lt;n&gt;\0" + content)</code> scheme GitEngine implements with proven
-    byte-for-byte parity against native git. Paste the verify command into any terminal.</p>
-  </section>
+    <div class="sect" style="border-bottom:none">
+      <h2>Object store — HEAD tree <span class="stat" id="dagStat"></span></h2>
+      <div id="dagWrap"><svg id="dag"></svg></div>
+    </div>
+  </div>
+
+  <!-- terminal + inspector -->
+  <div class="col">
+    <div id="term" aria-live="polite"></div>
+    <div class="cmdbtns" id="cmdbtns"></div>
+    <div id="cmdRow"><span>ge</span><input id="cmd" placeholder="status · add . · commit -m 'msg' · branch x · checkout x · merge x · log" autocomplete="off"></div>
+    <div class="sect" style="border-bottom:none">
+      <h2>Inspector</h2>
+      <div id="inspector"><pre>click a commit or object</pre></div>
+    </div>
+    <div id="branchbar">HEAD → <span class="b" id="headRef">main</span><span id="aheadInfo"></span></div>
+  </div>
 </main>
 
 <footer>
-  THE ALGORITHM IS THE EXHIBIT · CONTENT ADDRESSING, TREE SORT ORDER (<code>name/</code>), UNPADDED MODES —
-  AS BUILT IN <a href="https://github.com/brickster241/GitEngine" target="_blank" rel="noreferrer">GITENGINE</a>
-  AND PROVEN AGAINST NATIVE GIT BY ITS DIFFERENTIAL SUITE
+  THE SAME CONTENT-ADDRESSING GITENGINE IMPLEMENTS WITH PROVEN PARITY AGAINST NATIVE GIT ·
+  TRY: EDIT A FILE → <b>add .</b> → <b>commit -m 'x'</b> → <b>branch exp</b> → <b>checkout exp</b> → DIVERGE → <b>merge</b>
 </footer>
 
 <script type="module">
 const $ = (id) => document.getElementById(id)
 const enc = new TextEncoder()
 
-// ---------- real git hashing ----------
+// ---------------- real git object hashing ----------------
 async function sha1(bytes) {
   const d = await crypto.subtle.digest('SHA-1', bytes)
   return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, '0')).join('')
 }
 function cat(...arrs) {
   const n = arrs.reduce((s, a) => s + a.length, 0)
-  const out = new Uint8Array(n)
-  let o = 0
+  const out = new Uint8Array(n); let o = 0
   for (const a of arrs) { out.set(a, o); o += a.length }
   return out
 }
 const hexToBytes = (hex) => new Uint8Array(hex.match(/../g).map((h) => parseInt(h, 16)))
 
-async function hashBlob(text) {
-  const body = enc.encode(text)
-  const full = cat(enc.encode(`blob ${body.length}\0`), body)
-  return { sha: await sha1(full), size: body.length, body: full }
+// ---------------- the repository ----------------
+// objects: sha -> {type, body(text repr), size, entries?} — content-addressed, deduped
+const R = {
+  objects: new Map(),
+  refs: new Map([['main', null]]),
+  head: 'main',            // branch name, or a sha when detached
+  worktree: new Map([
+    ['README.md', '# sandbox\nA repo that lives in your tab.\n'],
+    ['src/main.go', 'package main\n\nfunc main() {\n\tprintln("hello")\n}\n'],
+    ['docs/notes.md', 'merge me later\n'],
+  ]),
+  index: new Map(),        // path -> {sha, content}
 }
-/**
- * Git tree serialization, the part with the two famous traps:
- *  - entries sort by name WITH a trailing '/' appended to directories
- *  - modes are unpadded: 40000 for trees, never 040000
- */
-async function hashTree(entries) {
-  const sorted = [...entries].sort((a, b) => {
-    const ka = a.type === 'tree' ? a.name + '/' : a.name
-    const kb = b.type === 'tree' ? b.name + '/' : b.name
-    return ka < kb ? -1 : ka > kb ? 1 : 0
-  })
-  let payload = new Uint8Array(0)
-  for (const e of sorted) {
-    const mode = e.type === 'tree' ? '40000' : '100644'
-    payload = cat(payload, enc.encode(`${mode} ${e.name}\0`), hexToBytes(e.sha))
-  }
-  const full = cat(enc.encode(`tree ${payload.length}\0`), payload)
-  return { sha: await sha1(full), size: payload.length, body: full, sorted }
-}
-async function hashCommit(treeSha, message) {
-  // Fixed identity + timestamp: determinism is a feature in an exhibit.
-  const txt = `tree ${treeSha}\nauthor Ground Control <gc@merkle.cascade> 1700000000 +0000\ncommitter Ground Control <gc@merkle.cascade> 1700000000 +0000\n\n${message}\n`
-  const body = enc.encode(txt)
-  const full = cat(enc.encode(`commit ${body.length}\0`), body)
-  return { sha: await sha1(full), size: body.length, txt }
-}
-
-// ---------- worktree state ----------
-let files = new Map([
-  ['README.md', '# demo\nEdit me and watch the DAG.\n'],
-  ['src/main.go', 'package main\n\nfunc main() {\n\tprintln("hello")\n}\n'],
-  ['src/util/helper.go', 'package util\n\nfunc Help() int { return 42 }\n'],
-  ['docs/notes.md', 'renaming me rewrites two trees\n'],
-])
 let selected = 'README.md'
-let selectedNode = null
-let prevShas = new Map()   // node key -> sha before the last edit
-let model = null           // built DAG
+let prevObjects = new Set()
 
-// ---------- build the DAG model ----------
-async function build() {
-  // nested structure from paths
-  const root = { type: 'tree', name: '(root)', path: '', children: new Map() }
-  for (const [path, content] of files) {
-    const parts = path.split('/')
-    let cur = root
+async function putBlob(content) {
+  const body = enc.encode(content)
+  const full = cat(enc.encode(`blob ${body.length}\0`), body)
+  const sha = await sha1(full)
+  if (!R.objects.has(sha)) R.objects.set(sha, { type: 'blob', size: body.length, content })
+  return sha
+}
+/** tree from a path->sha map; git sort (dirs as name+'/'), unpadded modes */
+async function putTreeFrom(paths) {
+  async function build(prefix) {
+    const here = new Map()
+    for (const [p, sha] of paths) {
+      if (!p.startsWith(prefix)) continue
+      const rest = p.slice(prefix.length)
+      const seg = rest.split('/')[0]
+      if (rest.includes('/')) here.set(seg, { type: 'tree' })
+      else here.set(seg, { type: 'blob', sha })
+    }
+    const entries = []
+    for (const [name, e] of here) {
+      if (e.type === 'tree') entries.push({ name, type: 'tree', sha: await build(prefix + name + '/') })
+      else entries.push({ name, type: 'blob', sha: e.sha })
+    }
+    entries.sort((a, b) => {
+      const ka = a.type === 'tree' ? a.name + '/' : a.name
+      const kb = b.type === 'tree' ? b.name + '/' : b.name
+      return ka < kb ? -1 : ka > kb ? 1 : 0
+    })
+    let payload = new Uint8Array(0)
+    for (const e of entries) {
+      payload = cat(payload, enc.encode(`${e.type === 'tree' ? '40000' : '100644'} ${e.name}\0`), hexToBytes(e.sha))
+    }
+    const full = cat(enc.encode(`tree ${payload.length}\0`), payload)
+    const sha = await sha1(full)
+    if (!R.objects.has(sha)) R.objects.set(sha, { type: 'tree', size: payload.length, entries })
+    return sha
+  }
+  return build('')
+}
+let clock = 1700000000
+async function putCommit(treeSha, parents, message) {
+  clock += 60
+  const lines = [`tree ${treeSha}`]
+  for (const p of parents) lines.push(`parent ${p}`)
+  lines.push(`author Ground Control <gc@sandbox> ${clock} +0000`)
+  lines.push(`committer Ground Control <gc@sandbox> ${clock} +0000`, '', message, '')
+  const body = enc.encode(lines.join('\n'))
+  const full = cat(enc.encode(`commit ${body.length}\0`), body)
+  const sha = await sha1(full)
+  R.objects.set(sha, { type: 'commit', size: body.length, tree: treeSha, parents, message, txt: lines.join('\n') })
+  return sha
+}
+
+const headSha = () => R.refs.has(R.head) ? R.refs.get(R.head) : R.head
+function commitFiles(sha) {
+  // flatten a commit's tree to path -> {sha, content}
+  const out = new Map()
+  if (!sha) return out
+  const walk = (treeSha, prefix) => {
+    for (const e of R.objects.get(treeSha).entries) {
+      if (e.type === 'tree') walk(e.sha, prefix + e.name + '/')
+      else out.set(prefix + e.name, { sha: e.sha, content: R.objects.get(e.sha).content })
+    }
+  }
+  walk(R.objects.get(sha).tree, '')
+  return out
+}
+
+// ---------------- commands ----------------
+const CMDS = {
+  async status() {
+    const head = commitFiles(headSha())
+    const lines = [`On branch ${R.refs.has(R.head) ? R.head : '(detached ' + R.head.slice(0, 7) + ')'}`]
+    const staged = [], modified = [], untracked = []
+    for (const [p, c] of R.worktree) {
+      const idx = R.index.get(p), h = head.get(p)
+      if (idx && idx.content === c) { if (!h || h.content !== c) staged.push(p) }
+      else if (idx && idx.content !== c) modified.push(p + '  (staged version differs)')
+      else if (h && h.content !== c) modified.push(p)
+      else if (!h && !idx) untracked.push(p)
+    }
+    for (const [p] of head) if (!R.worktree.has(p)) modified.push(p + '  (deleted)')
+    if (staged.length) lines.push('', 'Changes to be committed:', ...staged.map((p) => '  A  ' + p))
+    if (modified.length) lines.push('', 'Changes not staged:', ...modified.map((p) => '  M  ' + p))
+    if (untracked.length) lines.push('', 'Untracked files:', ...untracked.map((p) => '  ?  ' + p))
+    if (!staged.length && !modified.length && !untracked.length) lines.push('nothing to commit, working tree clean')
+    return lines.join('\n')
+  },
+  async add(arg) {
+    const targets = !arg || arg === '.' ? [...R.worktree.keys()] : [arg]
+    let n = 0
+    for (const p of targets) {
+      if (!R.worktree.has(p)) return { err: `pathspec '${p}' did not match any files` }
+      const content = R.worktree.get(p)
+      R.index.set(p, { sha: await putBlob(content), content })
+      n++
+    }
+    for (const [p] of R.index) if (!R.worktree.has(p)) R.index.delete(p)
+    return `staged ${n} file${n === 1 ? '' : 's'} (blob${n === 1 ? '' : 's'} written to the object store)`
+  },
+  async commit(arg) {
+    const m = arg?.match(/-m\s+'([^']*)'/) || arg?.match(/-m\s+"([^"]*)"/) || arg?.match(/-m\s+(\S+)/)
+    if (!m) return { err: "usage: commit -m 'message'" }
+    if (!R.index.size) return { err: 'nothing staged — use add first' }
+    const head = commitFiles(headSha())
+    const same = R.index.size === head.size && [...R.index].every(([p, v]) => head.get(p)?.content === v.content)
+    if (same) return { err: 'nothing to commit (index matches HEAD)' }
+    const paths = new Map([...R.index].map(([p, v]) => [p, v.sha]))
+    const tree = await putTreeFrom(paths)
+    const parent = headSha()
+    const sha = await putCommit(tree, parent ? [parent] : [], m[1])
+    if (R.refs.has(R.head)) R.refs.set(R.head, sha)
+    else R.head = sha
+    return `[${R.refs.has(R.head) ? R.head : 'detached'} ${sha.slice(0, 7)}] ${m[1]}`
+  },
+  async log() {
+    let sha = headSha()
+    if (!sha) return '(no commits yet)'
+    const out = []
+    const seen = new Set()
+    const queue = [sha]
+    while (queue.length && out.length < 20) {
+      const s = queue.shift()
+      if (seen.has(s)) continue
+      seen.add(s)
+      const c = R.objects.get(s)
+      const refs = [...R.refs].filter(([, v]) => v === s).map(([k]) => k)
+      const dec = [s === headSha() ? 'HEAD' : '', ...refs].filter(Boolean)
+      out.push(`${s.slice(0, 7)} ${dec.length ? '(' + dec.join(', ') + ') ' : ''}${c.message}`)
+      queue.push(...c.parents)
+    }
+    return out.join('\n')
+  },
+  async branch(arg) {
+    if (!arg) return [...R.refs.keys()].map((b) => (b === R.head ? '* ' : '  ') + b).join('\n')
+    if (R.refs.has(arg)) return { err: `branch '${arg}' already exists` }
+    if (!headSha()) return { err: 'cannot branch before the first commit' }
+    R.refs.set(arg, headSha())
+    return `branch '${arg}' → ${headSha().slice(0, 7)}`
+  },
+  async checkout(arg) {
+    if (!arg) return { err: 'usage: checkout <branch|sha>' }
+    let target = null
+    if (R.refs.has(arg)) { R.head = arg; target = R.refs.get(arg) }
+    else {
+      const full = [...R.objects.keys()].find((s) => s.startsWith(arg) && R.objects.get(s).type === 'commit')
+      if (!full) return { err: `unknown ref '${arg}'` }
+      R.head = full; target = full
+    }
+    // load the commit's files into worktree + index (clean checkout)
+    R.worktree = new Map()
+    R.index = new Map()
+    for (const [p, v] of commitFiles(target)) {
+      R.worktree.set(p, v.content)
+      R.index.set(p, { sha: v.sha, content: v.content })
+    }
+    if (!R.worktree.has(selected)) selected = [...R.worktree.keys()][0] ?? null
+    return `switched to ${R.refs.has(arg) ? "branch '" + arg + "'" : 'detached ' + target.slice(0, 7)}`
+  },
+  async merge(arg) {
+    if (!arg || !R.refs.has(arg)) return { err: 'usage: merge <branch>' }
+    if (!R.refs.has(R.head)) return { err: 'merge onto a branch, not a detached HEAD' }
+    const ours = headSha(), theirs = R.refs.get(arg)
+    if (!ours || !theirs) return { err: 'both branches need commits' }
+    // merge base: BFS ancestors — the same walk GitEngine implements
+    const anc = (s) => { const set = new Set(), q = [s]; while (q.length) { const x = q.shift(); if (set.has(x)) continue; set.add(x); q.push(...R.objects.get(x).parents) } return set }
+    const oursAnc = anc(ours)
+    let base = null
+    const q = [theirs]
+    const seen = new Set()
+    while (q.length) { const x = q.shift(); if (seen.has(x)) continue; seen.add(x); if (oursAnc.has(x)) { base = x; break } q.push(...R.objects.get(x).parents) }
+    if (base === theirs) return 'already up to date'
+    if (base === ours) {  // fast-forward
+      R.refs.set(R.head, theirs)
+      await CMDS.checkout(R.head)
+      return `fast-forward → ${theirs.slice(0, 7)}`
+    }
+    // three-way: file-level, diff3-style conflict when both sides changed
+    const b = commitFiles(base), o = commitFiles(ours), t = commitFiles(theirs)
+    const paths = new Set([...b.keys(), ...o.keys(), ...t.keys()])
+    const merged = new Map(); const conflicts = []
+    for (const p of paths) {
+      const bc = b.get(p)?.content, oc = o.get(p)?.content, tc = t.get(p)?.content
+      if (oc === tc) { if (oc !== undefined) merged.set(p, oc); continue }
+      if (oc === bc) { if (tc !== undefined) merged.set(p, tc); continue }
+      if (tc === bc) { if (oc !== undefined) merged.set(p, oc); continue }
+      conflicts.push(p)
+      merged.set(p, `<<<<<<< ${R.head}\n${oc ?? ''}=======\n${tc ?? ''}>>>>>>> ${arg}\n`)
+    }
+    R.worktree = new Map(merged)
+    if (conflicts.length) {
+      R.index = new Map()
+      for (const [p, c] of merged) if (!conflicts.includes(p)) R.index.set(p, { sha: await putBlob(c), content: c })
+      selected = conflicts[0]
+      return { err: `CONFLICT in ${conflicts.join(', ')} — fix the markers, then add . and commit (the merge commit gets two parents)`, conflictWith: theirs }
+    }
+    const pathsShas = new Map()
+    for (const [p, c] of merged) pathsShas.set(p, await putBlob(c))
+    const tree = await putTreeFrom(pathsShas)
+    const sha = await putCommit(tree, [ours, theirs], `merge ${arg} into ${R.head}`)
+    R.refs.set(R.head, sha)
+    await CMDS.checkout(R.head)
+    return `merge commit ${sha.slice(0, 7)} (two parents: ${ours.slice(0, 7)}, ${theirs.slice(0, 7)})`
+  },
+  async 'cat-file'(arg) {
+    const sha = arg === 'HEAD' ? headSha() : [...R.objects.keys()].find((s) => s.startsWith(arg ?? ''))
+    if (!sha) return { err: `unknown object '${arg}'` }
+    inspect(sha)
+    const o = R.objects.get(sha)
+    return `${o.type} ${sha.slice(0, 12)} → inspector`
+  },
+  async help() {
+    return 'status · add [.|path] · commit -m \'msg\' · log · branch [name] · checkout <ref> · merge <branch> · cat-file <sha|HEAD>'
+  },
+}
+// pendingMergeParents: set when a conflicted merge is being resolved
+let pendingMerge = null
+
+async function exec(line) {
+  const [cmd, ...restArr] = line.trim().split(/\s+/)
+  const rest = line.trim().slice(cmd.length).trim()
+  const fn = CMDS[cmd]
+  print('in', line)
+  if (!fn) { print('err', `unknown command '${cmd}' — try help`); return }
+  // conflicted-merge bookkeeping: the NEXT commit gets two parents
+  if (cmd === 'merge') pendingMerge = null
+  const before = new Set(R.objects.keys())
+  let res = await fn(rest)
+  if (res?.conflictWith) { pendingMerge = res.conflictWith; res = { err: res.err } }
+  if (cmd === 'commit' && pendingMerge && typeof res === 'string') {
+    // rewrite the just-made commit to carry the merge parent
+    const sha = headSha()
+    const c = R.objects.get(sha)
+    if (!c.parents.includes(pendingMerge)) {
+      const fixed = await putCommit(c.tree, [...c.parents, pendingMerge], c.message)
+      R.refs.set(R.head, fixed)
+      res += ` — merge sealed with two parents`
+    }
+    pendingMerge = null
+  }
+  if (typeof res === 'string') print('out', res)
+  else if (res?.err) print('err', res.err)
+  prevObjects = before
+  renderAll()
+}
+
+function print(cls, text) {
+  const d = document.createElement('div')
+  d.className = cls
+  d.textContent = text
+  $('term').appendChild(d)
+  $('term').scrollTop = $('term').scrollHeight
+}
+
+// ---------------- rendering ----------------
+function fileStatus(p) {
+  const head = commitFiles(headSha())
+  const c = R.worktree.get(p), idx = R.index.get(p), h = head.get(p)
+  if (idx && idx.content === c && (!h || h.content !== c)) return 'A'
+  if ((idx && idx.content !== c) || (h && !idx && h.content !== c) || (!h && !idx)) return 'M'
+  if (h && h.content === c) return 'S'
+  return 'M'
+}
+function renderTree() {
+  const paths = [...R.worktree.keys()].sort()
+  const frag = document.createDocumentFragment()
+  const seen = new Set()
+  for (const p of paths) {
+    const parts = p.split('/')
     for (let i = 0; i < parts.length - 1; i++) {
-      if (!cur.children.has(parts[i]))
-        cur.children.set(parts[i], { type: 'tree', name: parts[i], path: parts.slice(0, i + 1).join('/'), children: new Map() })
-      cur = cur.children.get(parts[i])
+      const dir = parts.slice(0, i + 1).join('/')
+      if (!seen.has(dir)) {
+        seen.add(dir)
+        const d = document.createElement('div')
+        d.className = 'entry'
+        d.style.setProperty('--ind', i)
+        d.innerHTML = `<span class="ico">▸</span>${parts[i]}/`
+        frag.appendChild(d)
+      }
     }
-    cur.children.set(parts.at(-1), { type: 'blob', name: parts.at(-1), path, content })
+    const d = document.createElement('div')
+    d.className = 'entry' + (p === selected ? ' sel' : '')
+    d.style.setProperty('--ind', parts.length - 1)
+    const st = fileStatus(p)
+    d.innerHTML = `<span class="ico">·</span>${parts.at(-1)}<span class="st ${st}">${st}</span>`
+    d.onclick = () => { selected = p; $('editor').value = R.worktree.get(p); renderTree() }
+    frag.appendChild(d)
   }
-  // hash bottom-up
-  const nodes = []
-  async function walk(node, depth) {
-    node.depth = depth
-    if (node.type === 'blob') {
-      const h = await hashBlob(node.content)
-      Object.assign(node, h)
-    } else {
-      const kids = [...node.children.values()]
-      for (const k of kids) await walk(k, depth + 1)
-      const h = await hashTree(kids.map((k) => ({ type: k.type, name: k.name, sha: k.sha })))
-      Object.assign(node, h)
-      node.kids = kids
-    }
-    nodes.push(node)
-    return node
-  }
-  await walk(root, 1)
-  const commit = { type: 'commit', name: 'HEAD', path: '(commit)', depth: 0, kids: [root] }
-  Object.assign(commit, await hashCommit(root.sha, 'edit via merkle cascade'))
-  nodes.push(commit)
-  return { commit, root, nodes }
+  $('tree').replaceChildren(frag)
+  $('wtStat').textContent = `${R.worktree.size} files`
 }
 
-// ---------- layout + render ----------
-const NW = 118, NH = 44, VGAP = 66
-function layout(m) {
-  // leaves get x slots in worktree order; internal nodes center over children
-  let next = 0
-  function place(n) {
-    if (n.type === 'blob' || !n.kids?.length) { n.x = next++; return n.x }
-    const xs = n.kids.map(place)
-    n.x = xs.reduce((a, b) => a + b, 0) / xs.length
-    return n.x
-  }
-  place(m.commit)
-  const maxDepth = Math.max(...m.nodes.map((n) => n.depth))
-  const cols = next
-  const W = Math.max(cols * (NW + 18) + 20, 460)
-  const H = (maxDepth + 1) * (NH + VGAP) - VGAP + 24
-  for (const n of m.nodes) {
-    n.px = 10 + n.x * (NW + 18) + NW / 2
-    n.py = 12 + n.depth * (NH + VGAP) + NH / 2
-  }
-  return { W, H }
-}
-
-const COLOR = { commit: 'var(--purple)', tree: 'var(--hud)', blob: 'var(--ok)' }
-function render(changed) {
-  const m = model
-  const { W, H } = layout(m)
-  const svg = $('dag')
-  svg.setAttribute('viewBox', `0 0 ${W} ${H}`)
-  svg.setAttribute('width', W); svg.setAttribute('height', H)
+function renderGraph() {
+  // lanes: BFS from all refs, newest (by clock embedded via insertion) first
+  const commits = [...R.objects].filter(([, o]) => o.type === 'commit').map(([s]) => s)
+  const order = commits.slice().reverse()  // insertion order ≈ time
+  const laneOf = new Map(), rowOf = new Map()
+  let lanes = 0
+  order.forEach((s, i) => {
+    rowOf.set(s, i)
+    if (!laneOf.has(s)) laneOf.set(s, lanes++ % 6)
+    const ps = R.objects.get(s).parents
+    ps.forEach((p, j) => { if (!laneOf.has(p)) laneOf.set(p, j === 0 ? laneOf.get(s) : (lanes++ % 6)) })
+  })
+  const CW = 30, RH = 34, X0 = 20, Y0 = 18
+  const W = Math.max(230, X0 + 7 * CW + 150), H = Y0 + order.length * RH + 8
   const parts = []
-  for (const n of m.nodes) if (n.kids) for (const k of n.kids) {
-    parts.push(`<path class="edgeline" data-to="${k.path}" d="M${n.px} ${n.py + NH / 2 - 6} C ${n.px} ${n.py + VGAP / 2}, ${k.px} ${k.py - VGAP / 2}, ${k.px} ${k.py - NH / 2 + 6}"/>`)
+  for (const s of order) {
+    for (const p of R.objects.get(s).parents) {
+      if (!rowOf.has(p)) continue
+      const x1 = X0 + laneOf.get(s) * CW, y1 = Y0 + rowOf.get(s) * RH
+      const x2 = X0 + laneOf.get(p) * CW, y2 = Y0 + rowOf.get(p) * RH
+      parts.push(`<path class="cedge" d="M${x1} ${y1} C ${x1} ${(y1 + y2) / 2}, ${x2} ${(y1 + y2) / 2}, ${x2} ${y2}"/>`)
+    }
   }
-  for (const n of m.nodes) {
-    const c = COLOR[n.type]
-    parts.push(`<g class="nodebox" data-path="${n.path}" transform="translate(${n.px - NW / 2},${n.py - NH / 2})">
-      <rect width="${NW}" height="${NH}" rx="9"/>
-      <circle cx="13" cy="13" r="3.5" fill="${c}"/>
-      <text x="24" y="17" font-size="10.5" fill="var(--ink)">${n.name.length > 12 ? n.name.slice(0, 11) + '…' : n.name}</text>
-      <text x="13" y="34" font-size="10" fill="${c}" style="font-family:var(--mono)">${n.sha.slice(0, 8)}</text>
+  for (const s of order) {
+    const x = X0 + laneOf.get(s) * CW, y = Y0 + rowOf.get(s) * RH
+    const c = R.objects.get(s)
+    const isHead = s === headSha()
+    const refs = [...R.refs].filter(([, v]) => v === s).map(([k]) => k)
+    const tags = [...(isHead ? ['HEAD'] : []), ...refs]
+    parts.push(`<g class="cnode${isHead ? ' head' : ''}" data-sha="${s}">
+      <circle cx="${x}" cy="${y}" r="6.5"/>
+      ${tags.map((t, i) => `<text class="reftag" x="${X0 + 6 * CW}" y="${y + 3.5}" dx="${i * 44}" fill="${t === 'HEAD' ? 'var(--amber)' : 'var(--ok)'}">${t}</text>`).join('')}
+      <text x="${X0 + 6 * CW}" y="${y + 3.5}" dx="${tags.length * 44 + (tags.length ? 8 : 0)}">${s.slice(0, 7)}  ${c.message.slice(0, 18)}${c.parents.length > 1 ? '  ⑂' : ''}</text>
     </g>`)
   }
+  const svg = $('graph')
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`)
+  svg.setAttribute('width', W); svg.setAttribute('height', H)
   svg.innerHTML = parts.join('')
-  svg.querySelectorAll('.nodebox').forEach((g) => {
-    g.addEventListener('click', () => selectNode(g.dataset.path))
+  svg.querySelectorAll('.cnode').forEach((g) => g.addEventListener('click', () => inspect(g.dataset.sha)))
+  $('logStat').textContent = `${order.length} commits · ${R.refs.size} branches`
+}
+
+const NW = 104, NH = 40, VG = 46
+function renderDag() {
+  const sha = headSha()
+  const svg = $('dag')
+  if (!sha) { svg.innerHTML = ''; $('dagStat').textContent = 'no commits yet'; return }
+  // build node list from HEAD commit
+  const nodes = [], edges = []
+  const commit = { id: sha, label: 'HEAD', sha, type: 'commit', depth: 0 }
+  nodes.push(commit)
+  const walk = (treeSha, name, depth, parentId) => {
+    const id = parentId + '/' + name
+    nodes.push({ id, label: name, sha: treeSha, type: 'tree', depth })
+    edges.push([parentId, id])
+    for (const e of R.objects.get(treeSha).entries) {
+      if (e.type === 'tree') walk(e.sha, e.name, depth + 1, id)
+      else { nodes.push({ id: id + '/' + e.name, label: e.name, sha: e.sha, type: 'blob', depth: depth + 1 }); edges.push([id, id + '/' + e.name]) }
+    }
+  }
+  walk(R.objects.get(sha).tree, 'root', 1, sha)
+  // layout leaves left-to-right per depth
+  const byDepth = new Map()
+  for (const n of nodes) { if (!byDepth.has(n.depth)) byDepth.set(n.depth, []); byDepth.get(n.depth).push(n) }
+  const maxAcross = Math.max(...[...byDepth.values()].map((a) => a.length))
+  const W = Math.max(340, maxAcross * (NW + 12) + 16)
+  const H = (byDepth.size) * (NH + VG) - VG + 20
+  for (const [d, arr] of byDepth) arr.forEach((n, i) => {
+    n.px = (W / (arr.length + 1)) * (i + 1)
+    n.py = 12 + d * (NH + VG) + NH / 2
   })
-  $('dagStat').textContent = `${m.nodes.length} objects`
-  $('wtStat').textContent = `${files.size} files`
-
-  // cascade animation: light changed nodes bottom-up with stagger
-  if (changed?.size) {
-    const hot = m.nodes.filter((n) => changed.has(n.path))
-    hot.sort((a, b) => b.depth - a.depth)
-    hot.forEach((n, i) => {
-      setTimeout(() => {
-        svg.querySelector(`.nodebox[data-path="${CSS.escape(n.path)}"]`)?.classList.add('hot')
-        svg.querySelector(`.edgeline[data-to="${CSS.escape(n.path)}"]`)?.classList.add('hot')
-      }, 160 * i)
-    })
-    setTimeout(() => {
-      svg.querySelectorAll('.hot').forEach((el) => el.classList.remove('hot'))
-    }, 160 * hot.length + 1600)
-    const reused = m.nodes.length - hot.length
-    $('cascadeLog').innerHTML =
-      `<span class="amber">${hot.length} object${hot.length > 1 ? 's' : ''} rehashed</span> · ` +
-      `<span class="okc">${reused} reused unchanged</span><br>` +
-      hot.map((n) => `${'&nbsp;'.repeat(2)}${n.type} ${n.name} → ${n.sha.slice(0, 8)}`).join('<br>')
+  const pos = new Map(nodes.map((n) => [n.id, n]))
+  const COLOR = { commit: 'var(--purple)', tree: 'var(--hud)', blob: 'var(--ok)' }
+  const parts = []
+  for (const [a, b] of edges) {
+    const A = pos.get(a), B = pos.get(b)
+    parts.push(`<path class="edgeline${!prevObjects.has(B.sha) ? ' hot' : ''}" d="M${A.px} ${A.py + NH / 2 - 6} C ${A.px} ${A.py + VG}, ${B.px} ${B.py - VG}, ${B.px} ${B.py - NH / 2 + 6}"/>`)
   }
-  if (selectedNode) selectNode(selectedNode, true)
+  for (const n of nodes) {
+    const hot = !prevObjects.has(n.sha)
+    parts.push(`<g class="nodebox${hot ? ' hot' : ''}" data-sha="${n.sha}" transform="translate(${n.px - NW / 2},${n.py - NH / 2})">
+      <rect width="${NW}" height="${NH}" rx="8"/>
+      <circle cx="11" cy="12" r="3" fill="${COLOR[n.type]}"/>
+      <text x="20" y="15" font-size="9.5" fill="var(--ink)">${n.label.length > 11 ? n.label.slice(0, 10) + '…' : n.label}</text>
+      <text x="11" y="31" font-size="9.5" fill="${COLOR[n.type]}">${n.sha.slice(0, 8)}</text>
+    </g>`)
+  }
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`)
+  svg.setAttribute('width', W); svg.setAttribute('height', H)
+  svg.innerHTML = parts.join('')
+  svg.querySelectorAll('.nodebox').forEach((g) => g.addEventListener('click', () => inspect(g.dataset.sha)))
+  $('dagStat').textContent = `${R.objects.size} objects · reused stay dim`
 }
 
-// ---------- inspector ----------
-function fmtTree(n) {
-  return n.sorted.map((e) =>
-    `<span class="m">${e.type === 'tree' ? '40000' : '100644'}</span> <span class="n">${e.name}</span>\\0<span class="h">${e.sha}</span>`
-  ).join('\n')
-}
-function selectNode(path, keep) {
-  selectedNode = path
-  const n = model.nodes.find((x) => x.path === path)
-  if (!n) return
-  document.querySelectorAll('.nodebox').forEach((g) => g.classList.toggle('sel', g.dataset.path === path))
-  $('iType').textContent = n.type.toUpperCase() + (n.name !== '(root)' ? ` · ${n.name}` : ' · root')
-  $('iSha').textContent = n.sha
-  if (n.type === 'blob') {
-    $('bytes').innerHTML = `<b>blob ${n.size}\\0</b>${escapeHtml(n.content)}`
-    $('verify').hidden = false
-    $('verify').innerHTML = `verify in any repo:<br><b>printf '%s' ${shellq(n.content)} | git hash-object --stdin</b><br>→ ${n.sha}`
-  } else if (n.type === 'tree') {
-    $('bytes').innerHTML = `<b>tree ${n.size}\\0</b>\n${fmtTree(n)}\n\n<i style="color:var(--faint)">entries sort with '/' appended to dir names;\nmodes are unpadded — the two traps GitEngine's\ndifferential suite caught.</i>`
-    $('verify').hidden = true
-  } else {
-    $('bytes').innerHTML = `<b>commit ${n.size}\\0</b>${escapeHtml(n.txt)}`
-    $('verify').hidden = true
-  }
+function inspect(sha) {
+  const o = R.objects.get(sha)
+  if (!o) return
+  document.querySelectorAll('.nodebox').forEach((g) => g.classList.toggle('sel', g.dataset.sha === sha))
+  let body = ''
+  if (o.type === 'blob') body = `<b>blob ${o.size}\\0</b>\n${escapeHtml(o.content)}`
+  else if (o.type === 'tree') body = `<b>tree ${o.size}\\0</b>\n` + o.entries.map((e) => `${e.type === 'tree' ? '40000' : '100644'} ${e.name}\\0${e.sha}`).join('\n')
+  else body = `<b>commit ${o.size}\\0</b>\n${escapeHtml(o.txt)}`
+  $('inspector').innerHTML = `<b>${o.type}</b> <span style="color:var(--faint)">${sha}</span><pre>${body}</pre>` +
+    (o.type === 'blob' ? `<pre style="color:var(--ok)">printf '%s' ${shellq(o.content)} | git hash-object --stdin\n→ ${sha}</pre>` : '')
 }
 function shellq(s) { return `'${s.replace(/'/g, `'\\''`)}'` }
 function escapeHtml(s) { return s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])) }
 
-// ---------- file list UI ----------
-function renderFiles() {
-  const frag = document.createDocumentFragment()
-  for (const path of [...files.keys()].sort()) {
-    const d = document.createElement('div')
-    d.className = 'file' + (path === selected ? ' sel' : '')
-    d.innerHTML = `<span>${path}</span><span class="x" title="delete">✕</span>`
-    d.querySelector('span').onclick = () => { selected = path; $('content').value = files.get(path); renderFiles() }
-    d.querySelector('.x').onclick = (e) => {
-      e.stopPropagation()
-      if (files.size === 1) return
-      files.delete(path)
-      if (selected === path) { selected = [...files.keys()][0]; $('content').value = files.get(selected) }
-      rebuild()
-    }
-    frag.appendChild(d)
-  }
-  $('files').replaceChildren(frag)
+function renderAll() {
+  renderTree(); renderGraph(); renderDag()
+  if (selected && R.worktree.has(selected)) $('editor').value = R.worktree.get(selected)
+  $('headRef').textContent = R.refs.has(R.head) ? R.head : '(detached ' + R.head.slice(0, 7) + ')'
 }
 
-// ---------- rebuild + diff ----------
-let debounce = null
-async function rebuild() {
-  model = await build()
-  const changed = new Set()
-  for (const n of model.nodes) {
-    if (prevShas.size && prevShas.get(n.path) !== n.sha) changed.add(n.path)
-  }
-  prevShas = new Map(model.nodes.map((n) => [n.path, n.sha]))
-  renderFiles()
-  render(changed)
-}
-
-$('content').addEventListener('input', () => {
-  files.set(selected, $('content').value)
-  clearTimeout(debounce)
-  debounce = setTimeout(rebuild, 300)
+// ---------------- UI wiring ----------------
+$('editor').addEventListener('input', () => {
+  if (selected) { R.worktree.set(selected, $('editor').value); renderTree() }
 })
-$('addBtn').onclick = () => {
+$('addFileBtn').onclick = () => {
   const p = $('newPath').value.trim().replace(/^\/+|\/+$/g, '')
-  if (!p || files.has(p)) return
-  files.set(p, 'new file\n')
+  if (!p || R.worktree.has(p)) return
+  R.worktree.set(p, 'new file\n')
   selected = p
-  $('content').value = files.get(p)
   $('newPath').value = ''
-  rebuild()
+  renderAll()
 }
-$('renBtn').onclick = () => {
-  const p = $('renamePath').value.trim().replace(/^\/+|\/+$/g, '')
-  if (!p || files.has(p) || !files.has(selected)) return
-  const content = files.get(selected)
-  files.delete(selected)
-  files.set(p, content)
-  selected = p
-  $('renamePath').value = ''
-  rebuild()
+$('cmd').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && $('cmd').value.trim()) { exec($('cmd').value); $('cmd').value = '' }
+})
+for (const c of ['status', 'add .', "commit -m 'update'", 'log', 'branch exp', 'checkout exp', 'checkout main', 'merge exp']) {
+  const b = document.createElement('button')
+  b.textContent = c
+  b.onclick = () => exec(c)
+  $('cmdbtns').appendChild(b)
 }
 
-$('content').value = files.get(selected)
-await rebuild()
-selectNode('')   // root tree
-
-// ---------- auto-demo: the cascade performs until the visitor takes over ----------
-let demoOn = true, demoTick = 0
-const DEMO = [
-  () => { files.set('src/util/helper.go', files.get('src/util/helper.go') + '// tick ' + demoTick + '\n') },
-  () => { files.set('README.md', '# demo\nEdit me and watch the DAG. (' + demoTick + ')\n') },
-  () => {
-    const from = files.has('docs/notes.md') ? 'docs/notes.md' : 'docs/journal.md'
-    const to = from === 'docs/notes.md' ? 'docs/journal.md' : 'docs/notes.md'
-    const c = files.get(from); files.delete(from); files.set(to, c)
-    if (selected === from) selected = to
-  },
-  () => { files.set('src/main.go', 'package main\n\nfunc main() {\n\tprintln("hello ' + demoTick + '")\n}\n') },
+// ---------------- auto-demo: the whole pipeline, hands-free ----------------
+const SCRIPT = [
+  'status',
+  'add .',
+  "commit -m 'first flight'",
+  () => { R.worktree.set('src/main.go', R.worktree.get('src/main.go').replace('hello', 'hello, sandbox')); selected = 'src/main.go' },
+  'status',
+  'add .',
+  "commit -m 'greet properly'",
+  'branch exp',
+  'checkout exp',
+  () => { R.worktree.set('docs/notes.md', 'the experiment branch was here\n'); selected = 'docs/notes.md' },
+  'add .',
+  "commit -m 'experiment'",
+  'checkout main',
+  () => { R.worktree.set('README.md', '# sandbox\nA repo that lives in your tab.\nmain moved on too.\n'); selected = 'README.md' },
+  'add .',
+  "commit -m 'main advances'",
+  'merge exp',
+  'log',
 ]
-const demoTimer = setInterval(() => {
-  if (!demoOn) return
-  DEMO[demoTick % DEMO.length]()
-  demoTick++
-  if (files.has(selected)) $('content').value = files.get(selected)
-  rebuild()
-}, 4200)
+let step = 0, demoOn = true
+const demoTimer = setInterval(async () => {
+  if (!demoOn || step >= SCRIPT.length) { if (step >= SCRIPT.length) clearInterval(demoTimer); return }
+  const s = SCRIPT[step++]
+  if (typeof s === 'function') { s(); renderAll() }
+  else await exec(s)
+}, 2300)
 for (const ev of ['pointerdown', 'keydown']) {
   window.addEventListener(ev, () => { demoOn = false; clearInterval(demoTimer) }, { once: true, capture: true })
 }
+
+print('out', 'GitEngine sandbox — a content-addressed repository in memory.')
+print('out', "Type commands below, click the buttons, or just watch: the demo flies itself until you touch anything.")
+renderAll()
 </script>
 </body>
 </html>
