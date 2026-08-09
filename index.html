@@ -10,17 +10,17 @@
 <link href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@500;600;700&family=Red+Hat+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
-    --paper:#f6f5f1; --panelbg:#fdfcfa; --ink:#20242a; --soft:#68707c; --hair:#d9d7d0;
-    --add:#276e43; --addwash:#e3efe4; --del:#b0383e; --delwash:#f7e7e5; --hunk:#0e6674; --hunkwash:#e2eef0;
-    --keep:#8a6d1f;
+    --paper:#0a0d13; --panelbg:color-mix(in srgb,#11151d 66%,transparent); --ink:#e6edf3; --soft:#8b98a9; --hair:#232b38; --gridc:#121826;
+    --add:#57d364; --addwash:#12241a; --del:#f47067; --delwash:#2a1614; --hunk:#4fc6d6; --hunkwash:#0e2227;
+    --keep:#e3b341;
     --slab:'Zilla Slab',Rockwell,'Trebuchet MS',serif;
     --mono:'Red Hat Mono',ui-monospace,Menlo,monospace;
   }
   * { box-sizing:border-box; margin:0; }
-  body { background:var(--paper); color:var(--ink); font-family:var(--mono); height:100vh; display:flex; flex-direction:column; overflow:hidden; font-size:13px; }
-  header { display:flex; flex-wrap:wrap; align-items:baseline; gap:8px 20px; border-bottom:2px solid var(--ink); padding:16px clamp(14px,2.5vw,30px) 12px; background:var(--panelbg); }
+  body { background:var(--paper); background-image:linear-gradient(var(--gridc) 1px,transparent 1px),linear-gradient(90deg,var(--gridc) 1px,transparent 1px); background-size:28px 28px; color:var(--ink); font-family:var(--mono); height:100vh; display:flex; flex-direction:column; overflow:hidden; font-size:13px; }
+  header { display:flex; flex-wrap:wrap; align-items:baseline; gap:8px 20px; border-bottom:2px solid var(--hair); padding:16px clamp(14px,2.5vw,30px) 12px; background:var(--panelbg); }
   header h1 { font-family:var(--slab); font-size:23px; font-weight:700; }
-  header h1 b { color:var(--hunk); }
+  header h1 b { color:var(--ink); font-weight:500; }
   .placard { font-size:10.5px; letter-spacing:.1em; color:var(--soft); text-transform:lowercase; }
   header .right { margin-left:auto; font-size:12px; }
   header a { color:var(--hunk); text-decoration:underline; text-underline-offset:3px; }
@@ -46,45 +46,45 @@
   .st.A { color:var(--add); } .st.A::before { content:'+'; }
   .st.S { color:var(--soft); font-weight:400; } .st.S::before { content:'='; }
   .st.M, .st.A, .st.S { font-size:0; } .st::before { font-size:12px; }
-  textarea { width:100%; height:150px; resize:vertical; background:#fff; color:var(--ink); border:1px solid var(--hair); border-left:3px solid var(--keep); padding:9px; font:12.5px/1.55 var(--mono); }
+  textarea { width:100%; flex:1; min-height:140px; resize:none; background:color-mix(in srgb,#0e1219 72%,transparent); color:var(--ink); border:1px solid var(--hair); border-left:3px solid var(--keep); padding:9px; font:12.5px/1.55 var(--mono); }
   textarea:focus { outline:none; border-color:var(--hunk); border-left-color:var(--hunk); }
   .row { display:flex; gap:6px; margin-top:8px; }
-  .row input { flex:1; min-width:0; background:#fff; color:var(--ink); border:1px solid var(--hair); font:11px var(--mono); padding:5px 8px; }
-  .row button, .cmdbtns button { background:var(--panelbg); color:var(--ink); border:1px solid var(--ink); font:600 10.5px var(--mono); letter-spacing:.04em; padding:5px 10px; cursor:pointer; white-space:nowrap; }
-  .row button:hover, .cmdbtns button:hover { background:var(--ink); color:var(--panelbg); }
+  .row input { flex:1; min-width:0; background:color-mix(in srgb,#0e1219 72%,transparent); color:var(--ink); border:1px solid var(--hair); font:11px var(--mono); padding:5px 8px; }
+  .row button, .cmdbtns button { background:color-mix(in srgb,#0e1219 72%,transparent); color:var(--soft); border:1px solid var(--hair); border-radius:4px; font:600 10.5px var(--mono); letter-spacing:.04em; padding:5px 10px; cursor:pointer; white-space:nowrap; }
+  .row button:hover, .cmdbtns button:hover { color:var(--hunk); border-color:var(--hunk); }
 
   #graphWrap { flex:1; overflow:auto; min-height:170px; }
   #graph { display:block; }
   .cnode { cursor:pointer; }
-  .cnode circle { fill:var(--panelbg); stroke:var(--soft); stroke-width:2; }
+  .cnode circle { fill:#0e1219; stroke:var(--soft); stroke-width:2; }
   .cnode.head circle { stroke:var(--del); fill:var(--delwash); }
   .cnode text { fill:var(--soft); font-size:10.5px; font-family:var(--mono); }
   .cedge { stroke:var(--hair); stroke-width:2; fill:none; }
   .reftag { font-size:10px; font-weight:600; }
-  #dagWrap { overflow:auto; max-height:300px; }
+  #dagWrap { flex:1; min-height:200px; }
   .nodebox { cursor:pointer; }
-  .nodebox rect { fill:#fff; stroke:var(--hair); stroke-width:1.2; transition:stroke .3s, fill .3s; }
+  .nodebox rect { fill:#0e1219; stroke:var(--hair); stroke-width:1.2; transition:stroke .3s, fill .3s; }
   .nodebox.hot rect { stroke:var(--add); fill:var(--addwash); }
   .nodebox.sel rect { stroke:var(--hunk); stroke-width:2; }
   .edgeline { stroke:var(--hair); stroke-width:1.4; fill:none; transition:stroke .3s; }
   .edgeline.hot { stroke:var(--add); }
 
-  #term { flex:1; overflow:auto; padding:10px 0; font-size:12px; line-height:1.8; min-height:140px; counter-reset:ln; background:#fff; }
+  #term { flex:1; overflow:auto; padding:10px 0; font-size:12px; line-height:1.8; min-height:140px; counter-reset:ln; background:color-mix(in srgb,#0d1017 78%,transparent); }
   #term .in, #term .out, #term .err { padding:0 12px 0 46px; position:relative; white-space:pre-wrap; }
-  #term .in::after, #term .out::after, #term .err::after { counter-increment:ln; content:counter(ln); position:absolute; left:0; top:0; width:34px; text-align:right; color:var(--hair); font-size:10.5px; }
+  #term .in::after, #term .out::after, #term .err::after { counter-increment:ln; content:counter(ln); position:absolute; left:0; top:0; width:34px; text-align:right; color:#6b7480; font-size:10.5px; }
   #term .in { color:var(--ink); background:var(--hunkwash); }
   #term .in::before { content:'+ '; color:var(--hunk); font-weight:700; }
   #term .out { color:var(--soft); }
   #term .err { color:var(--del); background:var(--delwash); }
-  #cmdRow { display:flex; gap:0; border-top:2px solid var(--ink); background:#fff; }
+  #cmdRow { display:flex; gap:0; border-top:2px solid var(--hair); background:color-mix(in srgb,#0e1219 72%,transparent); }
   #cmdRow span { padding:9px 0 9px 12px; color:var(--del); font-weight:700; font-size:12px; }
   #cmd { flex:1; background:transparent; border:none; color:var(--ink); font:12.5px var(--mono); padding:9px 12px 9px 6px; }
   #cmd:focus { outline:none; }
   .cmdbtns { display:flex; flex-wrap:wrap; gap:5px; padding:8px 12px; border-top:1px solid var(--hair); }
   #inspector { font-size:11.5px; max-height:210px; overflow:auto; }
-  #inspector pre { background:#fff; border:1px solid var(--hair); border-left:3px solid var(--hunk); padding:8px; white-space:pre-wrap; word-break:break-all; color:var(--soft); margin-top:6px; font-size:11px; line-height:1.6; }
+  #inspector pre { background:color-mix(in srgb,#0e1219 72%,transparent); border:1px solid var(--hair); border-left:3px solid var(--hunk); padding:8px; white-space:pre-wrap; word-break:break-all; color:var(--soft); margin-top:6px; font-size:11px; line-height:1.6; }
   #inspector b { color:var(--ink); font-weight:600; }
-  #branchbar { display:flex; gap:8px; align-items:center; padding:7px 14px; border-top:2px solid var(--ink); font-size:11px; color:var(--soft); background:var(--panelbg); }
+  #branchbar { display:flex; gap:8px; align-items:center; padding:7px 14px; border-top:2px solid var(--hair); font-size:11px; color:var(--soft); background:var(--panelbg); }
   #branchbar .b { color:var(--del); font-weight:700; }
   footer { border-top:1px solid var(--hair); padding:8px; font-size:10px; color:var(--soft); letter-spacing:.05em; text-align:center; background:var(--panelbg); }
   footer a { color:var(--hunk); }
@@ -103,22 +103,22 @@
   <div class="col">
     <div class="sect" style="border-bottom:none; display:flex; flex-direction:column; min-height:0; flex:1">
       <h2>Explorer <span class="stat" id="wtStat"></span></h2>
-      <div class="grow" id="tree"></div>
+      <div id="tree" style="max-height:38vh; overflow:auto; margin-bottom:8px; border-bottom:1px solid var(--hair); padding-bottom:6px"></div>
       <div class="row"><input id="newPath" placeholder="new/file.txt"><button id="addFileBtn">NEW</button><button id="uploadBtn" title="Drop real files into the worktree — then add and commit them">⬆</button><input type="file" id="fileIn" multiple hidden></div>
       <textarea id="editor" spellcheck="false" aria-label="file content" placeholder="select a file"></textarea>
       <div class="row" style="font-size:9.5px; color:var(--faint); letter-spacing:1px; margin-top:5px">
-        <span>M modified · A staged · S in sync — edits are instant; <b style="color:var(--dim)">add</b> stages, <b style="color:var(--dim)">commit</b> seals</span>
+        <span>= in sync · ± modified · + staged — edits are instant; <b style="color:var(--soft)">add</b> stages, <b style="color:var(--soft)">commit</b> seals</span>
       </div>
     </div>
   </div>
 
   <!-- graphs -->
   <div class="col">
-    <div class="sect" style="flex:1; display:flex; flex-direction:column; min-height:220px">
+    <div class="sect" style="flex:0 1 auto; display:flex; flex-direction:column; min-height:150px; max-height:52vh">
       <h2>Commit graph <span class="stat" id="logStat"></span></h2>
       <div id="graphWrap"><svg id="graph"></svg></div>
     </div>
-    <div class="sect" style="border-bottom:none">
+    <div class="sect" style="border-bottom:none; flex:1; overflow:hidden; display:flex; flex-direction:column">
       <h2>Object store — HEAD tree <span class="stat" id="dagStat"></span></h2>
       <div id="dagWrap"><svg id="dag"></svg></div>
     </div>
@@ -128,7 +128,7 @@
   <div class="col">
     <div id="term" aria-live="polite"></div>
     <div class="cmdbtns" id="cmdbtns"></div>
-    <div id="cmdRow"><span>ge</span><input id="cmd" placeholder="status · add . · commit -m 'msg' · branch x · checkout x · merge x · log" autocomplete="off"></div>
+    <div id="cmdRow"><span>ge</span><input id="cmd" placeholder="status · add . · commit -m 'msg' · help" autocomplete="off"></div>
     <div class="sect" style="border-bottom:none">
       <h2>Inspector</h2>
       <div id="inspector"><pre>click a commit or object</pre></div>
@@ -498,8 +498,8 @@ function renderGraph() {
     const tags = [...(isHead ? ['HEAD'] : []), ...refs]
     parts.push(`<g class="cnode${isHead ? ' head' : ''}" data-sha="${s}">
       <circle cx="${x}" cy="${y}" r="6.5"/>
-      ${tags.map((t, i) => `<text class="reftag" x="${X0 + 6 * CW}" y="${y + 3.5}" dx="${i * 44}" fill="${t === 'HEAD' ? 'var(--del)' : 'var(--add)'}">${t}</text>`).join('')}
-      <text x="${X0 + 6 * CW}" y="${y + 3.5}" dx="${tags.length * 44 + (tags.length ? 8 : 0)}">${s.slice(0, 7)}  ${c.message.slice(0, 18)}${c.parents.length > 1 ? '  ⑂' : ''}</text>
+      ${tags.map((t, i) => `<text class="reftag" x="${x + 16}" y="${y + 3.5}" dx="${i * 44}" fill="${t === 'HEAD' ? 'var(--del)' : 'var(--add)'}">${t}</text>`).join('')}
+      <text x="${x + 16}" y="${y + 3.5}" dx="${tags.length * 44 + (tags.length ? 8 : 0)}">${s.slice(0, 7)}  ${c.message.slice(0, 18)}${c.parents.length > 1 ? '  ⑂' : ''}</text>
     </g>`)
   }
   const svg = $('graph')
@@ -507,7 +507,7 @@ function renderGraph() {
   svg.setAttribute('width', W); svg.setAttribute('height', H)
   svg.innerHTML = parts.join('')
   svg.querySelectorAll('.cnode').forEach((g) => g.addEventListener('click', () => inspect(g.dataset.sha)))
-  $('logStat').textContent = `${order.length} commits · ${R.refs.size} branches`
+  $('logStat').textContent = `${order.length} commit${order.length === 1 ? '' : 's'} · ${R.refs.size} branch${R.refs.size === 1 ? '' : 'es'}`
 }
 
 const NW = 104, NH = 40, VG = 46
@@ -533,7 +533,7 @@ function renderDag() {
   const byDepth = new Map()
   for (const n of nodes) { if (!byDepth.has(n.depth)) byDepth.set(n.depth, []); byDepth.get(n.depth).push(n) }
   const maxAcross = Math.max(...[...byDepth.values()].map((a) => a.length))
-  const W = Math.max(340, maxAcross * (NW + 12) + 16)
+  const W = Math.max(340, maxAcross * (NW + 30) + 20)
   const H = (byDepth.size) * (NH + VG) - VG + 20
   for (const [d, arr] of byDepth) arr.forEach((n, i) => {
     n.px = (W / (arr.length + 1)) * (i + 1)
@@ -555,8 +555,11 @@ function renderDag() {
       <text x="11" y="31" font-size="9.5" fill="${COLOR[n.type]}">${n.sha.slice(0, 8)}</text>
     </g>`)
   }
+  // Fit, don't clip: the whole tree scales into the panel.
   svg.setAttribute('viewBox', `0 0 ${W} ${H}`)
-  svg.setAttribute('width', W); svg.setAttribute('height', H)
+  svg.setAttribute('preserveAspectRatio', 'xMidYMin meet')
+  svg.setAttribute('width', '100%')
+  svg.setAttribute('height', '100%')
   svg.innerHTML = parts.join('')
   svg.querySelectorAll('.nodebox').forEach((g) => g.addEventListener('click', () => inspect(g.dataset.sha)))
   $('dagStat').textContent = `${R.objects.size} objects · reused stay dim`
