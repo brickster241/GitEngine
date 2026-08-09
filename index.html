@@ -7,101 +7,94 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%237dd3fc' stroke-width='3'/%3E%3Ccircle cx='16' cy='16' r='5' fill='%237dd3fc'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@500;600;700&family=Red+Hat+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg:#0b0f14; --panel:#11151d; --panel2:#161c26; --line:#232b38; --grid:#121826;
-    --ink:#e6edf3; --dim:#8b98a9; --faint:#5b6675;
-    --amber:#ffb454; --hud:#7dd3fc; --ok:#4ade80; --err:#f87171; --purple:#c4b5fd;
-    --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-    --sans:'Chakra Petch',-apple-system,'Segoe UI',system-ui,Helvetica,sans-serif;
+    --paper:#f6f5f1; --panelbg:#fdfcfa; --ink:#20242a; --soft:#68707c; --hair:#d9d7d0;
+    --add:#276e43; --addwash:#e3efe4; --del:#b0383e; --delwash:#f7e7e5; --hunk:#0e6674; --hunkwash:#e2eef0;
+    --keep:#8a6d1f;
+    --slab:'Zilla Slab',Rockwell,'Trebuchet MS',serif;
+    --mono:'Red Hat Mono',ui-monospace,Menlo,monospace;
   }
   * { box-sizing:border-box; margin:0; }
-  body {
-    background:var(--bg);
-    background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
-    background-size:28px 28px;
-    color:var(--ink); font-family:var(--mono); height:100vh; display:flex; flex-direction:column; overflow:hidden;
-  }
-  header { display:flex; flex-wrap:wrap; align-items:baseline; gap:10px 18px; border-bottom:1.5px solid var(--line); padding:14px clamp(12px,2vw,28px) 12px; }
-  header h1 { font-family:var(--sans); font-size:19px; font-weight:800; }
-  header h1 b { color:var(--hud); }
-  .placard { font-size:10px; letter-spacing:2.5px; color:var(--faint); text-transform:uppercase; }
-  header .right { margin-left:auto; font-size:11px; }
-  header a { color:var(--hud); text-decoration:none; }
+  body { background:var(--paper); color:var(--ink); font-family:var(--mono); height:100vh; display:flex; flex-direction:column; overflow:hidden; font-size:13px; }
+  header { display:flex; flex-wrap:wrap; align-items:baseline; gap:8px 20px; border-bottom:2px solid var(--ink); padding:16px clamp(14px,2.5vw,30px) 12px; background:var(--panelbg); }
+  header h1 { font-family:var(--slab); font-size:23px; font-weight:700; }
+  header h1 b { color:var(--hunk); }
+  .placard { font-size:10.5px; letter-spacing:.1em; color:var(--soft); text-transform:lowercase; }
+  header .right { margin-left:auto; font-size:12px; }
+  header a { color:var(--hunk); text-decoration:underline; text-underline-offset:3px; }
 
-  main { flex:1; display:grid; grid-template-columns:250px minmax(340px,1fr) 380px; gap:0; min-height:0; }
+  main { flex:1; display:grid; grid-template-columns:252px minmax(340px,1fr) 380px; gap:0; min-height:0; }
   @media (max-width:1000px){ main { grid-template-columns:1fr; grid-template-rows:auto auto auto; overflow-y:auto; } body { overflow:auto; height:auto; } }
-  .col { border-right:1.5px solid var(--line); display:flex; flex-direction:column; min-height:0; min-width:0; }
+  .col { border-right:1px solid var(--hair); display:flex; flex-direction:column; min-height:0; min-width:0; background:var(--panelbg); }
   .col:last-child { border-right:none; }
-  .sect { padding:10px 12px; border-bottom:1.5px solid var(--line); }
-  .sect h2 { font-size:9.5px; letter-spacing:2.5px; color:var(--faint); text-transform:uppercase; margin-bottom:8px; display:flex; align-items:center; }
-  .sect h2 .stat { margin-left:auto; letter-spacing:0; color:var(--dim); text-transform:none; }
+  .sect { padding:10px 14px; border-bottom:1px solid var(--hair); }
+  .sect h2 { font-size:11px; color:var(--hunk); background:var(--hunkwash); margin:0 -14px 10px; padding:4px 14px; font-weight:500; }
+  .sect h2::before { content:'@@ '; opacity:.6; }
+  .sect h2::after { content:' @@'; opacity:.6; }
+  .sect h2 .stat { float:right; color:var(--soft); }
   .grow { flex:1; overflow:auto; min-height:0; }
 
-  /* explorer */
-  #tree { font-size:12px; }
-  .entry { display:flex; align-items:center; gap:6px; padding:3px 6px 3px calc(6px + var(--ind,0)*14px); border-radius:5px; cursor:pointer; color:var(--dim); }
-  .entry:hover { background:var(--panel2); color:var(--ink); }
-  .entry.sel { background:var(--panel2); color:var(--ink); box-shadow:inset 2px 0 0 var(--hud); }
-  .entry .ico { width:12px; text-align:center; color:var(--faint); }
-  .entry .st { margin-left:auto; font-size:9px; letter-spacing:1px; }
-  .st.M { color:var(--amber); } .st.A { color:var(--ok); } .st.S { color:var(--hud); }
-  textarea {
-    width:100%; height:150px; resize:vertical; background:var(--bg); color:var(--ink);
-    border:1.5px solid var(--line); border-radius:8px; padding:8px; font:12px/1.5 var(--mono);
-  }
-  textarea:focus { outline:none; border-color:var(--hud); }
-  .row { display:flex; gap:6px; margin-top:7px; }
-  .row input { flex:1; min-width:0; background:var(--panel2); color:var(--ink); border:1px solid var(--line); border-radius:6px; font:10.5px var(--mono); padding:5px 8px; }
-  .row button, .cmdbtns button {
-    background:var(--panel2); color:var(--dim); border:1px solid var(--line); border-radius:6px;
-    font:10.5px var(--mono); letter-spacing:1px; padding:5px 9px; cursor:pointer; white-space:nowrap;
-  }
-  .row button:hover, .cmdbtns button:hover { color:var(--ink); border-color:var(--hud); }
+  #tree { font-size:12.5px; }
+  .entry { display:flex; align-items:center; gap:7px; padding:3px 8px 3px calc(8px + var(--ind,0)*14px); cursor:pointer; color:var(--soft); border-left:3px solid transparent; }
+  .entry:hover { background:var(--paper); color:var(--ink); }
+  .entry.sel { background:var(--hunkwash); color:var(--ink); border-left-color:var(--hunk); }
+  .entry .ico { width:12px; text-align:center; color:var(--hair); }
+  .entry .st { margin-left:auto; font-weight:600; font-size:11px; }
+  .st.M { color:var(--del); } .st.M::before { content:'±'; } 
+  .st.A { color:var(--add); } .st.A::before { content:'+'; }
+  .st.S { color:var(--soft); font-weight:400; } .st.S::before { content:'='; }
+  .st.M, .st.A, .st.S { font-size:0; } .st::before { font-size:12px; }
+  textarea { width:100%; height:150px; resize:vertical; background:#fff; color:var(--ink); border:1px solid var(--hair); border-left:3px solid var(--keep); padding:9px; font:12.5px/1.55 var(--mono); }
+  textarea:focus { outline:none; border-color:var(--hunk); border-left-color:var(--hunk); }
+  .row { display:flex; gap:6px; margin-top:8px; }
+  .row input { flex:1; min-width:0; background:#fff; color:var(--ink); border:1px solid var(--hair); font:11px var(--mono); padding:5px 8px; }
+  .row button, .cmdbtns button { background:var(--panelbg); color:var(--ink); border:1px solid var(--ink); font:600 10.5px var(--mono); letter-spacing:.04em; padding:5px 10px; cursor:pointer; white-space:nowrap; }
+  .row button:hover, .cmdbtns button:hover { background:var(--ink); color:var(--panelbg); }
 
-  /* graph */
   #graphWrap { flex:1; overflow:auto; min-height:170px; }
   #graph { display:block; }
   .cnode { cursor:pointer; }
-  .cnode circle { fill:var(--bg); stroke:var(--purple); stroke-width:2; }
-  .cnode.head circle { stroke:var(--amber); filter:drop-shadow(0 0 6px rgba(255,180,84,.5)); }
-  .cnode text { fill:var(--dim); font-size:10px; }
-  .cedge { stroke:var(--line); stroke-width:1.6; fill:none; }
-  .reftag { font-size:9.5px; letter-spacing:1px; }
+  .cnode circle { fill:var(--panelbg); stroke:var(--soft); stroke-width:2; }
+  .cnode.head circle { stroke:var(--del); fill:var(--delwash); }
+  .cnode text { fill:var(--soft); font-size:10.5px; font-family:var(--mono); }
+  .cedge { stroke:var(--hair); stroke-width:2; fill:none; }
+  .reftag { font-size:10px; font-weight:600; }
   #dagWrap { overflow:auto; max-height:300px; }
   .nodebox { cursor:pointer; }
-  .nodebox rect { fill:var(--bg); stroke:var(--line); stroke-width:1.5; transition:stroke .3s; }
-  .nodebox.hot rect { stroke:var(--amber); filter:drop-shadow(0 0 7px rgba(255,180,84,.55)); }
-  .nodebox.sel rect { stroke:var(--hud); }
-  .edgeline { stroke:var(--line); stroke-width:1.4; fill:none; transition:stroke .3s; }
-  .edgeline.hot { stroke:var(--amber); }
+  .nodebox rect { fill:#fff; stroke:var(--hair); stroke-width:1.2; transition:stroke .3s, fill .3s; }
+  .nodebox.hot rect { stroke:var(--add); fill:var(--addwash); }
+  .nodebox.sel rect { stroke:var(--hunk); stroke-width:2; }
+  .edgeline { stroke:var(--hair); stroke-width:1.4; fill:none; transition:stroke .3s; }
+  .edgeline.hot { stroke:var(--add); }
 
-  /* terminal */
-  #term { flex:1; overflow:auto; padding:10px 12px; font-size:11.5px; line-height:1.75; min-height:140px; }
-  #term .in { color:var(--ink); }
-  #term .in::before { content:'▸ '; color:var(--amber); }
-  #term .out { color:var(--dim); white-space:pre-wrap; }
-  #term .err { color:var(--err); white-space:pre-wrap; }
-  #cmdRow { display:flex; gap:0; border-top:1.5px solid var(--line); }
-  #cmdRow span { padding:9px 0 9px 12px; color:var(--amber); font-size:12px; }
-  #cmd { flex:1; background:transparent; border:none; color:var(--ink); font:12px var(--mono); padding:9px 12px 9px 6px; }
+  #term { flex:1; overflow:auto; padding:10px 0; font-size:12px; line-height:1.8; min-height:140px; counter-reset:ln; background:#fff; }
+  #term .in, #term .out, #term .err { padding:0 12px 0 46px; position:relative; white-space:pre-wrap; }
+  #term .in::after, #term .out::after, #term .err::after { counter-increment:ln; content:counter(ln); position:absolute; left:0; top:0; width:34px; text-align:right; color:var(--hair); font-size:10.5px; }
+  #term .in { color:var(--ink); background:var(--hunkwash); }
+  #term .in::before { content:'+ '; color:var(--hunk); font-weight:700; }
+  #term .out { color:var(--soft); }
+  #term .err { color:var(--del); background:var(--delwash); }
+  #cmdRow { display:flex; gap:0; border-top:2px solid var(--ink); background:#fff; }
+  #cmdRow span { padding:9px 0 9px 12px; color:var(--del); font-weight:700; font-size:12px; }
+  #cmd { flex:1; background:transparent; border:none; color:var(--ink); font:12.5px var(--mono); padding:9px 12px 9px 6px; }
   #cmd:focus { outline:none; }
-  .cmdbtns { display:flex; flex-wrap:wrap; gap:5px; padding:8px 12px; border-top:1.5px solid var(--line); }
-  #inspector { font-size:11px; max-height:210px; overflow:auto; }
-  #inspector pre { background:var(--bg); border:1px solid var(--line); border-radius:7px; padding:8px; white-space:pre-wrap; word-break:break-all; color:var(--dim); margin-top:6px; font-size:10.5px; line-height:1.6; }
-  #inspector b { color:var(--ink); font-weight:400; }
-  #branchbar { display:flex; gap:8px; align-items:center; padding:7px 12px; border-top:1.5px solid var(--line); font-size:10.5px; color:var(--dim); }
-  #branchbar .b { color:var(--amber); }
-  footer { border-top:1.5px solid var(--line); padding:8px; font-size:9.5px; color:var(--faint); letter-spacing:1px; text-align:center; }
-  footer a { color:var(--dim); }
+  .cmdbtns { display:flex; flex-wrap:wrap; gap:5px; padding:8px 12px; border-top:1px solid var(--hair); }
+  #inspector { font-size:11.5px; max-height:210px; overflow:auto; }
+  #inspector pre { background:#fff; border:1px solid var(--hair); border-left:3px solid var(--hunk); padding:8px; white-space:pre-wrap; word-break:break-all; color:var(--soft); margin-top:6px; font-size:11px; line-height:1.6; }
+  #inspector b { color:var(--ink); font-weight:600; }
+  #branchbar { display:flex; gap:8px; align-items:center; padding:7px 14px; border-top:2px solid var(--ink); font-size:11px; color:var(--soft); background:var(--panelbg); }
+  #branchbar .b { color:var(--del); font-weight:700; }
+  footer { border-top:1px solid var(--hair); padding:8px; font-size:10px; color:var(--soft); letter-spacing:.05em; text-align:center; background:var(--panelbg); }
+  footer a { color:var(--hunk); }
 </style>
 </head>
 <body>
 
 <header>
-  <h1>GITENGINE <b>SANDBOX</b></h1>
-  <span class="placard">a real repository, in memory — every SHA verifiable against native git</span>
+  <h1>GitEngine <b>working copy</b></h1>
+  <span class="placard">a real repository in memory — every sha verifiable against native git</span>
   <span class="right"><a href="https://github.com/brickster241/GitEngine" target="_blank" rel="noreferrer">source ↗</a></span>
 </header>
 
@@ -505,7 +498,7 @@ function renderGraph() {
     const tags = [...(isHead ? ['HEAD'] : []), ...refs]
     parts.push(`<g class="cnode${isHead ? ' head' : ''}" data-sha="${s}">
       <circle cx="${x}" cy="${y}" r="6.5"/>
-      ${tags.map((t, i) => `<text class="reftag" x="${X0 + 6 * CW}" y="${y + 3.5}" dx="${i * 44}" fill="${t === 'HEAD' ? 'var(--amber)' : 'var(--ok)'}">${t}</text>`).join('')}
+      ${tags.map((t, i) => `<text class="reftag" x="${X0 + 6 * CW}" y="${y + 3.5}" dx="${i * 44}" fill="${t === 'HEAD' ? 'var(--del)' : 'var(--add)'}">${t}</text>`).join('')}
       <text x="${X0 + 6 * CW}" y="${y + 3.5}" dx="${tags.length * 44 + (tags.length ? 8 : 0)}">${s.slice(0, 7)}  ${c.message.slice(0, 18)}${c.parents.length > 1 ? '  ⑂' : ''}</text>
     </g>`)
   }
@@ -547,7 +540,7 @@ function renderDag() {
     n.py = 12 + d * (NH + VG) + NH / 2
   })
   const pos = new Map(nodes.map((n) => [n.id, n]))
-  const COLOR = { commit: 'var(--purple)', tree: 'var(--hud)', blob: 'var(--ok)' }
+  const COLOR = { commit: 'var(--del)', tree: 'var(--hunk)', blob: 'var(--add)' }
   const parts = []
   for (const [a, b] of edges) {
     const A = pos.get(a), B = pos.get(b)
@@ -578,7 +571,7 @@ function inspect(sha) {
   else if (o.type === 'tree') body = `<b>tree ${o.size}\\0</b>\n` + o.entries.map((e) => `${e.type === 'tree' ? '40000' : '100644'} ${e.name}\\0${e.sha}`).join('\n')
   else body = `<b>commit ${o.size}\\0</b>\n${escapeHtml(o.txt)}`
   $('inspector').innerHTML = `<b>${o.type}</b> <span style="color:var(--faint)">${sha}</span><pre>${body}</pre>` +
-    (o.type === 'blob' ? `<pre style="color:var(--ok)">printf '%s' ${shellq(o.content)} | git hash-object --stdin\n→ ${sha}</pre>` : '')
+    (o.type === 'blob' ? `<pre style="color:var(--add)">printf '%s' ${shellq(o.content)} | git hash-object --stdin\n→ ${sha}</pre>` : '')
 }
 function shellq(s) { return `'${s.replace(/'/g, `'\\''`)}'` }
 function escapeHtml(s) { return s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])) }
