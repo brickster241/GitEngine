@@ -3,98 +3,116 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>GitEngine · Sandbox</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%237dd3fc' stroke-width='3'/%3E%3Ccircle cx='16' cy='16' r='5' fill='%237dd3fc'/%3E%3C/svg%3E">
+<title>GitEngine · A repository, from first principles</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%23ff801f' stroke-width='3'/%3E%3Ccircle cx='16' cy='16' r='5' fill='%23ffc53d'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@500;600;700&family=Red+Hat+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=Inter:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
-    --paper:#0a0d13; --panelbg:color-mix(in srgb,#11151d 66%,transparent); --ink:#e6edf3; --soft:#8b98a9; --hair:#232b38; --gridc:#121826;
-    --add:#57d364; --addwash:#12241a; --del:#f47067; --delwash:#2a1614; --hunk:#4fc6d6; --hunkwash:#0e2227;
-    --keep:#e3b341;
-    --slab:'Zilla Slab',Rockwell,'Trebuchet MS',serif;
-    --mono:'Red Hat Mono',ui-monospace,Menlo,monospace;
+    --canvas:#000000; --card:#0a0a0c; --card2:#101012; --deep:#06060a;
+    --hair:rgba(255,255,255,0.06); --hair2:rgba(255,255,255,0.14); --soft-div:rgba(255,255,255,0.04);
+    --ink:#fcfdff; --body:rgba(252,253,255,0.86); --mut:#a1a4a5; --ash:#888e90; --stone:#464a4d;
+    --blob:#11ff99; --blob-glow:rgba(34,255,153,0.18);
+    --tree:#3b9eff; --tree-glow:rgba(0,117,255,0.34);
+    --com:#ff801f;  --com-glow:rgba(255,89,0,0.22);
+    --err:#ff2047;  --err-glow:rgba(255,32,71,0.34);
+    --keep:#ffc53d;
+    --serif:'Newsreader',Georgia,'Times New Roman',serif;
+    --sans:'Inter',system-ui,sans-serif;
+    --mono:'Geist Mono',ui-monospace,Menlo,monospace;
   }
   * { box-sizing:border-box; margin:0; }
-  body { background:var(--paper); background-image:linear-gradient(var(--gridc) 1px,transparent 1px),linear-gradient(90deg,var(--gridc) 1px,transparent 1px); background-size:28px 28px; color:var(--ink); font-family:var(--mono); height:100vh; display:flex; flex-direction:column; overflow:hidden; font-size:13px; }
-  header { display:flex; flex-wrap:wrap; align-items:baseline; gap:8px 20px; border-bottom:2px solid var(--hair); padding:16px clamp(14px,2.5vw,30px) 12px; background:var(--panelbg); }
-  header h1 { font-family:var(--slab); font-size:23px; font-weight:700; }
-  header h1 b { color:var(--ink); font-weight:500; }
-  .placard { font-size:10.5px; letter-spacing:.1em; color:var(--soft); text-transform:lowercase; }
-  header .right { margin-left:auto; font-size:12px; }
-  header a { color:var(--hunk); text-decoration:underline; text-underline-offset:3px; }
+  html { color-scheme:dark; }
+  body { background:var(--canvas); color:var(--ink); font-family:var(--mono); height:100vh; display:flex; flex-direction:column; overflow:hidden; font-size:13px; -webkit-font-smoothing:antialiased; }
+  /* Resend signature: soft atmospheric glows anchored at the top, low opacity, never bands */
+  body::before { content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
+    background:
+      radial-gradient(42% 30% at 18% -4%, var(--com-glow), transparent 60%),
+      radial-gradient(36% 26% at 82% -6%, var(--tree-glow), transparent 58%),
+      radial-gradient(30% 20% at 50% -8%, var(--blob-glow), transparent 55%);
+    opacity:.5; }
+  header, main, footer { position:relative; z-index:1; }
 
-  main { flex:1; display:grid; grid-template-columns:252px minmax(340px,1fr) 380px; gap:0; min-height:0; }
+  header { display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 20px; border-bottom:1px solid var(--hair); padding:18px clamp(16px,2.5vw,34px) 14px; }
+  header h1 { font-family:var(--serif); font-size:30px; font-weight:500; letter-spacing:.005em; }
+  header h1 b { font-weight:400; font-style:italic; color:var(--mut); }
+  .placard { font-family:var(--sans); font-size:12px; color:var(--ash); }
+  header .right { margin-left:auto; font-size:12px; }
+  header a { font-family:var(--sans); color:var(--body); text-decoration:none; border:1px solid var(--hair2); border-radius:8px; padding:6px 13px; transition:border-color .15s; }
+  header a:hover { border-color:var(--com); }
+
+  main { flex:1; display:grid; grid-template-columns:252px minmax(340px,1fr) 380px; gap:10px; min-height:0; padding:10px clamp(10px,1.2vw,16px); }
   @media (max-width:1000px){ main { grid-template-columns:1fr; grid-template-rows:auto auto auto; overflow-y:auto; } body { overflow:auto; height:auto; } }
-  .col { border-right:1px solid var(--hair); display:flex; flex-direction:column; min-height:0; min-width:0; background:var(--panelbg); }
-  .col:last-child { border-right:none; }
-  .sect { padding:10px 14px; border-bottom:1px solid var(--hair); }
-  .sect h2 { font-size:11px; color:var(--hunk); background:var(--hunkwash); margin:0 -14px 10px; padding:4px 14px; font-weight:500; }
-  .sect h2::before { content:'@@ '; opacity:.6; }
-  .sect h2::after { content:' @@'; opacity:.6; }
-  .sect h2 .stat { float:right; color:var(--soft); }
+  .col { border:1px solid var(--hair); border-radius:12px; display:flex; flex-direction:column; min-height:0; min-width:0; background:var(--card); overflow:hidden; }
+  .sect { padding:10px 14px; border-bottom:1px solid var(--soft-div); }
+  .sect h2 { font-family:var(--sans); font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--mut); margin:0 0 10px; }
+  .sect h2 .stat { float:right; color:var(--stone); font-family:var(--mono); font-weight:400; letter-spacing:0; text-transform:none; }
   .grow { flex:1; overflow:auto; min-height:0; }
 
   #tree { font-size:12.5px; }
-  .entry { display:flex; align-items:center; gap:7px; padding:3px 8px 3px calc(8px + var(--ind,0)*14px); cursor:pointer; color:var(--soft); border-left:3px solid transparent; }
-  .entry:hover { background:var(--paper); color:var(--ink); }
-  .entry.sel { background:var(--hunkwash); color:var(--ink); border-left-color:var(--hunk); }
-  .entry .ico { width:12px; text-align:center; color:var(--hair); }
+  .entry { display:flex; align-items:center; gap:7px; padding:3px 8px 3px calc(8px + var(--ind,0)*14px); cursor:pointer; color:var(--ash); border-left:2px solid transparent; border-radius:6px; }
+  .entry:hover { background:var(--card2); color:var(--ink); }
+  .entry.sel { background:var(--card2); color:var(--ink); border-left-color:var(--tree); }
+  .entry .ico { width:12px; text-align:center; color:var(--stone); }
   .entry .st { margin-left:auto; font-weight:600; font-size:11px; }
-  .st.M { color:var(--del); } .st.M::before { content:'±'; } 
-  .st.A { color:var(--add); } .st.A::before { content:'+'; }
-  .st.S { color:var(--soft); font-weight:400; } .st.S::before { content:'='; }
+  .st.M { color:var(--err); } .st.M::before { content:'±'; }
+  .st.A { color:var(--blob); } .st.A::before { content:'+'; }
+  .st.S { color:var(--stone); font-weight:400; } .st.S::before { content:'='; }
   .st.M, .st.A, .st.S { font-size:0; } .st::before { font-size:12px; }
-  textarea { width:100%; flex:1; min-height:140px; resize:none; background:color-mix(in srgb,#0e1219 72%,transparent); color:var(--ink); border:1px solid var(--hair); border-left:3px solid var(--keep); padding:9px; font:12.5px/1.55 var(--mono); }
-  textarea:focus { outline:none; border-color:var(--hunk); border-left-color:var(--hunk); }
+  textarea { width:100%; flex:1; min-height:140px; resize:none; background:var(--deep); color:var(--body); border:1px solid var(--hair); border-left:2px solid var(--keep); border-radius:8px; padding:9px; font:12.5px/1.55 var(--mono); }
+  textarea:focus { outline:none; border-color:var(--tree); border-left-color:var(--tree); }
   .row { display:flex; gap:6px; margin-top:8px; }
-  .row input { flex:1; min-width:0; background:color-mix(in srgb,#0e1219 72%,transparent); color:var(--ink); border:1px solid var(--hair); font:11px var(--mono); padding:5px 8px; }
-  .row button, .cmdbtns button { background:color-mix(in srgb,#0e1219 72%,transparent); color:var(--soft); border:1px solid var(--hair); border-radius:4px; font:600 10.5px var(--mono); letter-spacing:.04em; padding:5px 10px; cursor:pointer; white-space:nowrap; }
-  .row button:hover, .cmdbtns button:hover { color:var(--hunk); border-color:var(--hunk); }
+  .row input { flex:1; min-width:0; background:var(--deep); color:var(--ink); border:1px solid var(--hair); border-radius:7px; font:11px var(--mono); padding:5px 8px; }
+  .row input:focus { outline:none; border-color:var(--hair2); }
+  .row button, .cmdbtns button { background:var(--card2); color:var(--mut); border:1px solid var(--hair2); border-radius:7px; font:500 11px var(--sans); letter-spacing:.01em; padding:5px 10px; cursor:pointer; white-space:nowrap; transition:all .15s; }
+  .row button:hover, .cmdbtns button:hover { color:var(--ink); border-color:var(--com); }
 
   #graphWrap { flex:1; overflow:auto; min-height:170px; }
   #graph { display:block; }
   .cnode { cursor:pointer; }
-  .cnode circle { fill:#0e1219; stroke:var(--soft); stroke-width:2; }
-  .cnode.head circle { stroke:var(--del); fill:var(--delwash); }
-  .cnode text { fill:var(--soft); font-size:10.5px; font-family:var(--mono); }
-  .cedge { stroke:var(--hair); stroke-width:2; fill:none; }
+  .cnode circle { fill:var(--deep); stroke:var(--ash); stroke-width:2; }
+  .cnode.head circle { stroke:var(--err); fill:#160309; filter:drop-shadow(0 0 6px var(--err-glow)); }
+  .cnode text { fill:var(--mut); font-size:10.5px; font-family:var(--mono); }
+  .cedge { stroke:var(--hair2); stroke-width:1.6; fill:none; }
   .reftag { font-size:10px; font-weight:600; }
   #dagWrap { flex:1; min-height:200px; }
   .nodebox { cursor:pointer; }
-  .nodebox rect { fill:#0e1219; stroke:var(--hair); stroke-width:1.2; transition:stroke .3s, fill .3s; }
-  .nodebox.hot rect { stroke:var(--add); fill:var(--addwash); }
-  .nodebox.sel rect { stroke:var(--hunk); stroke-width:2; }
-  .edgeline { stroke:var(--hair); stroke-width:1.4; fill:none; transition:stroke .3s; }
-  .edgeline.hot { stroke:var(--add); }
+  .nodebox rect { fill:var(--deep); stroke:var(--hair2); stroke-width:1; transition:stroke .3s, fill .3s; }
+  .nodebox.hot rect { stroke:var(--blob); fill:#04160e; }
+  .nodebox.hot { filter:drop-shadow(0 0 7px var(--blob-glow)); }
+  .nodebox.sel rect { stroke:var(--tree); stroke-width:1.6; }
+  .nodebox.sel { filter:drop-shadow(0 0 8px var(--tree-glow)); }
+  .edgeline { stroke:var(--hair2); stroke-width:1.3; fill:none; transition:stroke .3s; }
+  .edgeline.hot { stroke:var(--blob); }
 
-  #term { flex:1; overflow:auto; padding:10px 0; font-size:12px; line-height:1.8; min-height:140px; counter-reset:ln; background:color-mix(in srgb,#0d1017 78%,transparent); }
+  #term { flex:1; overflow:auto; padding:10px 0; font-size:12px; line-height:1.8; min-height:140px; counter-reset:ln; background:var(--deep); }
   #term .in, #term .out, #term .err { padding:0 12px 0 46px; position:relative; white-space:pre-wrap; }
-  #term .in::after, #term .out::after, #term .err::after { counter-increment:ln; content:counter(ln); position:absolute; left:0; top:0; width:34px; text-align:right; color:#6b7480; font-size:10.5px; }
-  #term .in { color:var(--ink); background:var(--hunkwash); }
-  #term .in::before { content:'+ '; color:var(--hunk); font-weight:700; }
-  #term .out { color:var(--soft); }
-  #term .err { color:var(--del); background:var(--delwash); }
-  #cmdRow { display:flex; gap:0; border-top:2px solid var(--hair); background:color-mix(in srgb,#0e1219 72%,transparent); }
-  #cmdRow span { padding:9px 0 9px 12px; color:var(--del); font-weight:700; font-size:12px; }
+  #term .in::after, #term .out::after, #term .err::after { counter-increment:ln; content:counter(ln); position:absolute; left:0; top:0; width:34px; text-align:right; color:var(--stone); font-size:10.5px; }
+  #term .in { color:var(--ink); background:rgba(59,158,255,0.07); }
+  #term .in::before { content:'+ '; color:var(--tree); font-weight:700; }
+  #term .out { color:var(--mut); }
+  #term .err { color:var(--err); background:rgba(255,32,71,0.07); }
+  #cmdRow { display:flex; gap:0; border-top:1px solid var(--hair); background:var(--deep); }
+  #cmdRow span { padding:9px 0 9px 12px; color:var(--com); font-weight:700; font-size:12px; }
   #cmd { flex:1; background:transparent; border:none; color:var(--ink); font:12.5px var(--mono); padding:9px 12px 9px 6px; }
   #cmd:focus { outline:none; }
-  .cmdbtns { display:flex; flex-wrap:wrap; gap:5px; padding:8px 12px; border-top:1px solid var(--hair); }
+  .cmdbtns { display:flex; flex-wrap:wrap; gap:5px; padding:8px 12px; border-top:1px solid var(--soft-div); }
   #inspector { font-size:11.5px; max-height:210px; overflow:auto; }
-  #inspector pre { background:color-mix(in srgb,#0e1219 72%,transparent); border:1px solid var(--hair); border-left:3px solid var(--hunk); padding:8px; white-space:pre-wrap; word-break:break-all; color:var(--soft); margin-top:6px; font-size:11px; line-height:1.6; }
+  #inspector pre { background:var(--deep); border:1px solid var(--hair); border-left:2px solid var(--tree); border-radius:8px; padding:8px; white-space:pre-wrap; word-break:break-all; color:var(--mut); margin-top:6px; font-size:11px; line-height:1.6; }
   #inspector b { color:var(--ink); font-weight:600; }
-  #branchbar { display:flex; gap:8px; align-items:center; padding:7px 14px; border-top:2px solid var(--hair); font-size:11px; color:var(--soft); background:var(--panelbg); }
-  #branchbar .b { color:var(--del); font-weight:700; }
-  footer { border-top:1px solid var(--hair); padding:8px; font-size:10px; color:var(--soft); letter-spacing:.05em; text-align:center; background:var(--panelbg); }
-  footer a { color:var(--hunk); }
+  #branchbar { display:flex; gap:8px; align-items:center; padding:7px 14px; border-top:1px solid var(--soft-div); font-family:var(--sans); font-size:11px; color:var(--ash); }
+  #branchbar .b { color:var(--err); font-weight:600; }
+  footer { padding:10px 8px 14px; font-family:var(--sans); font-size:11px; color:var(--stone); letter-spacing:.02em; text-align:center; }
+  footer b { color:var(--ash); font-weight:500; }
+  footer a { color:var(--tree); text-decoration:none; }
 </style>
 </head>
 <body>
 
 <header>
-  <h1>GitEngine <b>working copy</b></h1>
-  <span class="placard">a real repository in memory — every sha verifiable against native git</span>
+  <h1>GitEngine <b>— a repository, from first principles.</b></h1>
+  <span class="placard">real SHA-1 content addressing, in your tab; every hash verifiable against native git</span>
   <span class="right"><a href="https://github.com/brickster241/GitEngine" target="_blank" rel="noreferrer">source ↗</a></span>
 </header>
 
@@ -106,8 +124,8 @@
       <div id="tree" style="max-height:38vh; overflow:auto; margin-bottom:8px; border-bottom:1px solid var(--hair); padding-bottom:6px"></div>
       <div class="row"><input id="newPath" placeholder="new/file.txt"><button id="addFileBtn">NEW</button><button id="uploadBtn" title="Drop real files into the worktree — then add and commit them">⬆</button><input type="file" id="fileIn" multiple hidden></div>
       <textarea id="editor" spellcheck="false" aria-label="file content" placeholder="select a file"></textarea>
-      <div class="row" style="font-size:9.5px; color:var(--faint); letter-spacing:1px; margin-top:5px">
-        <span>= in sync · ± modified · + staged — edits are instant; <b style="color:var(--soft)">add</b> stages, <b style="color:var(--soft)">commit</b> seals</span>
+      <div class="row" style="font-size:9.5px; color:var(--stone); letter-spacing:1px; margin-top:5px">
+        <span>= in sync · ± modified · + staged — edits are instant; <b style="color:var(--ash)">add</b> stages, <b style="color:var(--ash)">commit</b> seals</span>
       </div>
     </div>
   </div>
@@ -498,7 +516,7 @@ function renderGraph() {
     const tags = [...(isHead ? ['HEAD'] : []), ...refs]
     parts.push(`<g class="cnode${isHead ? ' head' : ''}" data-sha="${s}">
       <circle cx="${x}" cy="${y}" r="6.5"/>
-      ${tags.map((t, i) => `<text class="reftag" x="${x + 16}" y="${y + 3.5}" dx="${i * 44}" fill="${t === 'HEAD' ? 'var(--del)' : 'var(--add)'}">${t}</text>`).join('')}
+      ${tags.map((t, i) => `<text class="reftag" x="${x + 16}" y="${y + 3.5}" dx="${i * 44}" fill="${t === 'HEAD' ? 'var(--err)' : 'var(--blob)'}">${t}</text>`).join('')}
       <text x="${x + 16}" y="${y + 3.5}" dx="${tags.length * 44 + (tags.length ? 8 : 0)}">${s.slice(0, 7)}  ${c.message.slice(0, 18)}${c.parents.length > 1 ? '  ⑂' : ''}</text>
     </g>`)
   }
@@ -540,7 +558,7 @@ function renderDag() {
     n.py = 12 + d * (NH + VG) + NH / 2
   })
   const pos = new Map(nodes.map((n) => [n.id, n]))
-  const COLOR = { commit: 'var(--del)', tree: 'var(--hunk)', blob: 'var(--add)' }
+  const COLOR = { commit: 'var(--com)', tree: 'var(--tree)', blob: 'var(--blob)' }
   const parts = []
   for (const [a, b] of edges) {
     const A = pos.get(a), B = pos.get(b)
@@ -573,8 +591,8 @@ function inspect(sha) {
   if (o.type === 'blob') body = `<b>blob ${o.size}\\0</b>\n${escapeHtml(o.content)}`
   else if (o.type === 'tree') body = `<b>tree ${o.size}\\0</b>\n` + o.entries.map((e) => `${e.type === 'tree' ? '40000' : '100644'} ${e.name}\\0${e.sha}`).join('\n')
   else body = `<b>commit ${o.size}\\0</b>\n${escapeHtml(o.txt)}`
-  $('inspector').innerHTML = `<b>${o.type}</b> <span style="color:var(--faint)">${sha}</span><pre>${body}</pre>` +
-    (o.type === 'blob' ? `<pre style="color:var(--add)">printf '%s' ${shellq(o.content)} | git hash-object --stdin\n→ ${sha}</pre>` : '')
+  $('inspector').innerHTML = `<b>${o.type}</b> <span style="color:var(--stone)">${sha}</span><pre>${body}</pre>` +
+    (o.type === 'blob' ? `<pre style="color:var(--blob)">printf '%s' ${shellq(o.content)} | git hash-object --stdin\n→ ${sha}</pre>` : '')
 }
 function shellq(s) { return `'${s.replace(/'/g, `'\\''`)}'` }
 function escapeHtml(s) { return s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])) }
